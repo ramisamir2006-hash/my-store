@@ -1,57 +1,82 @@
 import json
-import sqlite3
-from telegram import Update, WebAppInfo, InlineKeyboardButton, InlineKeyboardMarkup
+import logging
+from telegram import Update, WebAppInfo, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
+# --- الإعدادات الأساسية ---
 TOKEN = "8234943697:AAEKiDTuNJMgBF7XySjvimPzHcPRrIo_DuE"
-ADMIN_ID = 7020070481  # هويتك كمدير
+ADMIN_ID = 7020070481  # هويتك كمدير (رامي سمير)
+WEB_APP_URL = "https://ramisamir2006-hash.github.io/my-store/"
 
-# --- (3) إعداد قاعدة البيانات ---
-def init_db():
-    conn = sqlite3.connect('store.db')
-    cursor = conn.cursor()
-    cursor.execute('''CREATE TABLE IF NOT EXISTS orders 
-                      (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT, details TEXT, total REAL)''')
-    conn.commit()
-    conn.close()
+# إعداد السجلات (Logs) لمراقبة الأخطاء على Koyeb
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-# استقبال الطلب من الواجهة
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """إرسال رسالة الترحيب والأزرار الرئيسية عند تشغيل البوت"""
+    user_name = update.effective_user.first_name
+    
+    # أزرار القائمة السفلية (مثل التي ظهرت في صورك)
+    keyboard = [
+        [KeyboardButton("🛍️ تصفح المتجر الآن", web_app=WebAppInfo(url=WEB_APP_URL))],
+        ["📦 طلباتي", "💬 خدمة العملاء"]
+    ]
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+    await update.message.reply_text(
+        f"أهلاً بك يا {user_name} في متجر رامي سمير! 👋\n\n"
+        "أنا مساعدك الذكي للمتجر 🤖، يمكنك تصفح المنتجات وطلبها مباشرة من خلال الزر بالأسفل 👇",
+        reply_markup=reply_markup
+    )
+
 async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """استلام بيانات الطلب من المتجر وإرسالها للمدير"""
+    # استخراج البيانات القادمة من الواجهة (JavaScript)
     data = json.loads(update.effective_message.web_app_data.data)
     user = update.effective_user
     
-    # حفظ في قاعدة البيانات
-    conn = sqlite3.connect('store.db')
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO orders (user_id, details, total) VALUES (?, ?, ?)",
-                   (user.id, str(data['items']), data['total']))
-    conn.commit()
-    conn.close()
+    # تفاصيل الطلب لتظهر بشكل منظم
+    items_details = "\n".join([f"- {item['name']}: {item['price']} ج.م" for item in data['items']])
+    total_price = data['total']
 
-    # إرسال رسالة للعميل
-    await update.message.reply_text(f"شكراً {user.first_name}! تم استلام طلبك بمبلغ {data['total']} ج.م")
-
-    # إرسال تنبيه للمدير (رامي)
-    await context.bot.send_message(
-        chat_id=ADMIN_ID,
-        text=f"🚨 **طلب جديد!**\nالعميل: {user.first_name}\nالمبلغ: {data['total']}\nالتفاصيل: {data['items']}"
+    # 1. إرسال تأكيد للعميل
+    await update.message.reply_text(
+        f"✅ تم استلام طلبك بنجاح يا {user.first_name}!\n\n"
+        f"تفاصيل الطلب:\n{items_details}\n\n"
+        f"💰 الإجمالي: {total_price} ج.م\n"
+        "سنتواصل معك قريباً لتأكيد الشحن."
     )
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # ضع رابط صفحة الويب التي أنشأتها هنا
-    web_app_url = "https://your-github-username.github.io/" 
-    keyboard = [[InlineKeyboardButton("فتح المتجر 🛒", web_app=WebAppInfo(url=web_app_url))]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("أهلاً بك في متجرنا!", reply_markup=reply_markup)
+    # 2. إرسال تنبيه فوري للمدير (رامي سمير) ببيانات العميل
+    admin_message = (
+        f"🚨 **طلب جديد من المتجر!**\n\n"
+        f"👤 العميل: {user.first_name} (@{user.username})\n"
+        f"🆔 معرف العميل: {user.id}\n\n"
+        f"📦 المنتجات:\n{items_details}\n\n"
+        f"💵 المبلغ الإجمالي: {total_price} ج.م"
+    )
+    await context.bot.send_message(chat_id=ADMIN_ID, text=admin_message, parse_mode="Markdown")
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """عرض معلومات الدعم الفني كما في صورك"""
+    help_text = (
+        "📍 **مركز التواصل والدعم الفني**\n\n"
+        "نحن هنا لمساعدتك! يمكنك التواصل معنا عبر:\n"
+        "📞 هاتف: 201277123567\n"
+        "⏰ ساعات العمل: من 11 صباحاً حتى 9 مساءً"
+    )
+    await update.message.reply_text(help_text, parse_mode="Markdown")
 
 def main():
-    init_db()
+    """تشغيل البوت"""
     app = Application.builder().token(TOKEN).build()
+
+    #Handlers
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.Text("💬 خدمة العملاء"), help_command))
     app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, handle_web_app_data))
-    print("البوت يعمل الآن...")
+
+    print("✅ البوت يعمل الآن ومتصل بالمتجر...")
     app.run_polling()
 
 if __name__ == "__main__":
     main()
-  
