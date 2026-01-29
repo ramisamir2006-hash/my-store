@@ -1,46 +1,71 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <title>متجر رامي سمير</title>
     <style>
-        body { font-family: sans-serif; direction: rtl; padding: 20px; background: #f4f4f4; }
-        .product { background: white; padding: 15px; margin-bottom: 10px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
-        button { background: #0088cc; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; }
-        .cart-btn { position: fixed; bottom: 20px; width: 90%; left: 5%; padding: 15px; background: #28a745; font-size: 18px; }
-    </style>
-</head>
-<body>
-    <h2>🛍️ متجر رامي سمير</h2>
-    <div class="product">
-        <span>أسورة شانيل - 75 ج.م</span>
-        <button onclick="addToCart('أسورة شانيل', 75)">إضافة +</button>
-    </div>
-    <div class="product">
-        <span>خاتم ذهبي - 100 ج.م</span>
-        <button onclick="addToCart('خاتم ذهبي', 100)">إضافة +</button>
-    </div>
-
-    <button class="cart-btn" onclick="sendOrder()">إرسال الطلب للبوت ✅</button>
-
-    <script>
-        let tg = window.Telegram.WebApp;
-        tg.expand(); // توسيع الواجهة لتملأ الشاشة
-        let cart = [];
-
-        function addToCart(name, price) {
-            cart.push({name, price});
-            alert("تمت إضافة " + name);
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            direction: rtl; 
+            padding: 20px; 
+            background: #f0f2f5; 
+            margin: 0;
+            color: #333;
         }
-
-        function sendOrder() {
-            if (cart.length === 0) return alert("السلة فارغة!");
-            let data = {
-                items: cart,
-                total: cart.reduce((sum, item) => sum + item.price, 0),
-                user_id: tg.initDataUnsafe.user.id
-            };
-            tg.sendData(JSON.stringify(data)); // إرسال البيانات للبوت
+        h2 { 
+            text-align: center; 
+            color: #0088cc; 
+            margin-bottom: 30px; 
+            font-size: 2em; 
         }
-    </script>
-</body>
-</html>
+        .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            background: #fff; 
+            padding: 25px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+        }
+        .product, .admin-section { 
+            background: #f9f9f9; 
+            padding: 15px; 
+            margin-bottom: 12px; 
+            border-radius: 8px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            border: 1px solid #eee;
+        }
+        .product-info {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .product-name {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        .product-price {
+            color: #555;
+            font-size: 0.9em;
+        }
+        button { 
+            background: #0088cc; 
+            color: white; 
+            border: none; 
+            padding: 10px 15px; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 0.95em;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #006bb3;
+        }
+        .cart-btn, .admin-submit-btn { 
+            position: fixed; 
+            bottom: 20px; 
+            width
