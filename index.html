@@ -68,4 +68,326 @@
         .cart-btn, .admin-submit-btn { 
             position: fixed; 
             bottom: 20px; 
-            width
+            width: calc(100% - 40px); 
+            left: 20px; 
+            padding: 15px; 
+            background: #28a745; 
+            font-size: 1.1em;
+            font-weight: bold;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 163, 0, 0.3);
+            max-width: 560px; /* لتناسب مع container */
+        }
+        .cart-btn.hidden, .admin-panel.hidden {
+            display: none;
+        }
+        .admin-panel {
+            margin-top: 30px;
+            border-top: 2px dashed #ccc;
+            padding-top: 20px;
+        }
+        .admin-panel h3 {
+            text-align: center;
+            color: #d9534f;
+            margin-bottom: 20px;
+        }
+        .admin-panel input[type="text"], 
+        .admin-panel input[type="number"], 
+        .admin-panel select {
+            width: calc(100% - 22px);
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+        .admin-section button {
+            background-color: #d9534f;
+        }
+        .admin-section button:hover {
+            background-color: #c9302c;
+        }
+        .message {
+            background-color: #e7f3fe;
+            border-left: 6px solid #2196F3;
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            text-align: right;
+        }
+        #cartSummary {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e6f7ff;
+            border: 1px solid #91d5ff;
+            border-radius: 8px;
+            font-size: 1em;
+        }
+        #cartSummary h4 {
+            margin-top: 0;
+            color: #0056b3;
+        }
+        #cartSummary ul {
+            list-style: none;
+            padding: 0;
+        }
+        #cartSummary ul li {
+            padding: 5px 0;
+            border-bottom: 1px dashed #cce0ff;
+        }
+        #cartSummary ul li:last-child {
+            border-bottom: none;
+        }
+        .total-price {
+            font-weight: bold;
+            color: #007bff;
+            margin-top: 10px;
+            text-align: left;
+        }
+        .remove-from-cart {
+            background-color: #ffc107;
+            color: #333;
+            padding: 5px 8px;
+            font-size: 0.8em;
+            margin-right: 5px;
+        }
+        .remove-from-cart:hover {
+            background-color: #e0a800;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 id="pageTitle">🛍️ متجر رامي سمير</h2>
+
+        <div id="customerView">
+            <div id="productsList">
+                <div class="message">
+                    لا توجد منتجات حالياً. يمكنك إضافة منتجات من لوحة التحكم.
+                </div>
+            </div>
+            
+            <div id="cartSummary" class="hidden">
+                <h4>سلة مشترياتك:</h4>
+                <ul id="cartItemsList">
+                    </ul>
+                <div class="total-price">
+                    الإجمالي: <span id="cartTotalPrice">0</span> ج.م
+                </div>
+            </div>
+            
+            <button class="cart-btn" id="sendOrderBtn" onclick="sendOrder()">إرسال الطلب للبوت ✅</button>
+        </div>
+
+        <div id="adminPanel" class="admin-panel hidden">
+            <h3>⚙️ لوحة تحكم المدير</h3>
+            
+            <div class="admin-section">
+                <h4>➕ إضافة منتج جديد</h4>
+                <input type="text" id="newProductName" placeholder="اسم المنتج" required>
+                <input type="number" id="newProductPrice" placeholder="السعر" required>
+                <select id="newProductCategory">
+                    <option value="">اختر القسم</option>
+                    </select>
+                <button onclick="addProduct()">إضافة المنتج</button>
+            </div>
+
+            <div class="admin-section">
+                <h4>📂 إضافة قسم جديد</h4>
+                <input type="text" id="newCategoryName" placeholder="اسم القسم" required>
+                <button onclick="addCategory()">إضافة القسم</button>
+            </div>
+
+            <div class="admin-section">
+                <h4>🗑️ إدارة المنتجات</h4>
+                <ul id="manageProductsList">
+                    </ul>
+            </div>
+             <button class="admin-submit-btn" onclick="saveAdminChanges()">حفظ التغييرات 💾</button>
+        </div>
+    </div>
+
+    <script>
+        let tg = window.Telegram.WebApp;
+        tg.expand(); 
+        
+        let cart = [];
+        let products = JSON.parse(localStorage.getItem('storeProducts')) || [];
+        let categories = JSON.parse(localStorage.getItem('storeCategories')) || ['أساور', 'خواتم', 'سلاسل'];
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const isAdmin = urlParams.get('admin') === 'true';
+
+        // عرض لوحة المدير أو واجهة العميل
+        if (isAdmin) {
+            document.getElementById('customerView').classList.add('hidden');
+            document.getElementById('sendOrderBtn').classList.add('hidden');
+            document.getElementById('adminPanel').classList.remove('hidden');
+            document.getElementById('pageTitle').innerText = "⚙️ إدارة متجر رامي سمير";
+            renderAdminPanel();
+        } else {
+            document.getElementById('adminPanel').classList.add('hidden');
+            renderProducts();
+        }
+
+        function saveState() {
+            localStorage.setItem('storeProducts', JSON.stringify(products));
+            localStorage.setItem('storeCategories', JSON.stringify(categories));
+            renderProducts();
+            if (isAdmin) renderAdminPanel();
+        }
+
+        // --- وظائف لوحة التحكم (للمدير) ---
+        function renderAdminPanel() {
+            // تحديث قائمة الأقسام في نموذج إضافة المنتج
+            const categorySelect = document.getElementById('newProductCategory');
+            categorySelect.innerHTML = '<option value="">اختر القسم</option>';
+            categories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat;
+                option.innerText = cat;
+                categorySelect.appendChild(option);
+            });
+
+            // تحديث قائمة إدارة المنتجات (للحذف)
+            const manageProductsList = document.getElementById('manageProductsList');
+            manageProductsList.innerHTML = '';
+            if (products.length === 0) {
+                manageProductsList.innerHTML = '<li>لا توجد منتجات بعد.</li>';
+                return;
+            }
+            products.forEach((product, index) => {
+                const li = document.createElement('li');
+                li.innerHTML = `${product.name} (${product.price} ج.م) <button class="remove-from-cart" onclick="deleteProduct(${index})">حذف</button>`;
+                manageProductsList.appendChild(li);
+            });
+        }
+
+        function addProduct() {
+            const name = document.getElementById('newProductName').value;
+            const price = parseFloat(document.getElementById('newProductPrice').value);
+            const category = document.getElementById('newProductCategory').value;
+
+            if (name && price > 0 && category) {
+                products.push({ name, price, category });
+                document.getElementById('newProductName').value = '';
+                document.getElementById('newProductPrice').value = '';
+                document.getElementById('newProductCategory').value = '';
+                saveState();
+                tg.showPopup({message: `تم إضافة المنتج: ${name}`});
+            } else {
+                tg.showAlert("الرجاء إدخال اسم وسعر وقسم صحيح للمنتج.");
+            }
+        }
+
+        function deleteProduct(index) {
+            const productName = products[index].name;
+            products.splice(index, 1);
+            saveState();
+            tg.showPopup({message: `تم حذف المنتج: ${productName}`});
+        }
+
+        function addCategory() {
+            const name = document.getElementById('newCategoryName').value;
+            if (name && !categories.includes(name)) {
+                categories.push(name);
+                document.getElementById('newCategoryName').value = '';
+                saveState();
+                tg.showPopup({message: `تم إضافة القسم: ${name}`});
+            } else if (categories.includes(name)) {
+                tg.showAlert("هذا القسم موجود بالفعل.");
+            } else {
+                tg.showAlert("الرجاء إدخال اسم القسم.");
+            }
+        }
+
+        function saveAdminChanges() {
+             // هنا يمكنك إرسال بيانات المنتجات والأقسام المحدثة للبوت إذا أردت حفظها في قاعدة بيانات مركزية
+             // tg.sendData(JSON.stringify({ type: 'admin_update', products: products, categories: categories }));
+             tg.showPopup({message: "تم حفظ التغييرات محلياً بنجاح!"});
+             // يمكن هنا إعادة توجيه المدير لصفحة أخرى أو مجرد إغلاق لوحة التحكم
+        }
+
+
+        // --- وظائف عرض المنتجات للعميل ---
+        function renderProducts() {
+            const productsList = document.getElementById('productsList');
+            productsList.innerHTML = ''; // تفريغ القائمة قبل إعادة العرض
+
+            if (products.length === 0) {
+                productsList.innerHTML = '<div class="message">لا توجد منتجات متوفرة حالياً.</div>';
+                return;
+            }
+
+            products.forEach(product => {
+                const productDiv = document.createElement('div');
+                productDiv.className = 'product';
+                productDiv.innerHTML = `
+                    <div class="product-info">
+                        <span class="product-name">${product.name}</span>
+                        <span class="product-price">${product.price} ج.م</span>
+                    </div>
+                    <button onclick="addToCart('${product.name}', ${product.price})">إضافة +</button>
+                `;
+                productsList.appendChild(productDiv);
+            });
+        }
+
+        function addToCart(name, price) {
+            cart.push({name, price});
+            tg.showPopup({message: `تمت إضافة "${name}" إلى السلة`});
+            updateCartSummary();
+        }
+
+        function removeFromCart(index) {
+            const removedItem = cart.splice(index, 1);
+            tg.showPopup({message: `تم حذف "${removedItem[0].name}" من السلة`});
+            updateCartSummary();
+        }
+
+        function updateCartSummary() {
+            const cartSummary = document.getElementById('cartSummary');
+            const cartItemsList = document.getElementById('cartItemsList');
+            const cartTotalPrice = document.getElementById('cartTotalPrice');
+
+            if (cart.length === 0) {
+                cartSummary.classList.add('hidden');
+                return;
+            }
+
+            cartSummary.classList.remove('hidden');
+            cartItemsList.innerHTML = '';
+            let total = 0;
+
+            cart.forEach((item, index) => {
+                const li = document.createElement('li');
+                li.innerHTML = `${item.name} - ${item.price} ج.م <button class="remove-from-cart" onclick="removeFromCart(${index})">إزالة</button>`;
+                cartItemsList.appendChild(li);
+                total += item.price;
+            });
+            cartTotalPrice.innerText = total;
+        }
+
+        function sendOrder() {
+            if (cart.length === 0) {
+                tg.showAlert("سلة المشتريات فارغة!");
+                return;
+            }
+            let data = {
+                items: cart,
+                total: cart.reduce((sum, item) => sum + item.price, 0),
+                user_id: tg.initDataUnsafe.user.id // يرسل معرف المستخدم للبوت
+            };
+            tg.sendData(JSON.stringify(data)); // إرسال البيانات للبوت
+            cart = []; // إفراغ السلة بعد الإرسال
+            updateCartSummary();
+            tg.close(); // إغلاق واجهة الويب بعد إرسال الطلب
+        }
+
+        // تحديث السلة عند بدء التشغيل
+        updateCartSummary();
+
+    </script>
+</body>
+</html>
