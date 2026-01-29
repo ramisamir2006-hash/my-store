@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { font-family: sans-serif; direction: rtl; padding: 20px; background: #f4f4f4; }
+        .product { background: white; padding: 15px; margin-bottom: 10px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
+        button { background: #0088cc; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; }
+        .cart-btn { position: fixed; bottom: 20px; width: 90%; left: 5%; padding: 15px; background: #28a745; font-size: 18px; }
+    </style>
+</head>
+<body>
+    <h2>🛍️ متجر رامي سمير</h2>
+    <div class="product">
+        <span>أسورة شانيل - 75 ج.م</span>
+        <button onclick="addToCart('أسورة شانيل', 75)">إضافة +</button>
+    </div>
+    <div class="product">
+        <span>خاتم ذهبي - 100 ج.م</span>
+        <button onclick="addToCart('خاتم ذهبي', 100)">إضافة +</button>
+    </div>
+
+    <button class="cart-btn" onclick="sendOrder()">إرسال الطلب للبوت ✅</button>
+
+    <script>
+        let tg = window.Telegram.WebApp;
+        tg.expand(); // توسيع الواجهة لتملأ الشاشة
+        let cart = [];
+
+        function addToCart(name, price) {
+            cart.push({name, price});
+            alert("تمت إضافة " + name);
+        }
+
+        function sendOrder() {
+            if (cart.length === 0) return alert("السلة فارغة!");
+            let data = {
+                items: cart,
+                total: cart.reduce((sum, item) => sum + item.price, 0),
+                user_id: tg.initDataUnsafe.user.id
+            };
+            tg.sendData(JSON.stringify(data)); // إرسال البيانات للبوت
+        }
+    </script>
+</body>
+</html>
