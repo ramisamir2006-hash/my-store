@@ -5,137 +5,146 @@ from datetime import datetime
 
 # --- إعدادات الربط النهائية ---
 TOKEN = "8234943697:AAEKiDTuNJMgBF7XySjvimPzHcPRrIo_DuE"
-CHANNEL_ID = "@RamySamir2026Gold"  # معرف قناتك
-ADMIN_ID = 7020070481             # معرفك الشخصي (رامي سمير)
+CHANNEL_ID = "@RamySamir2026Gold" 
+ADMIN_ID = 7020070481             # رامي سمير (المدير العام)
+
+# قائمة الموظفين (يفضل مستقبلاً ربطها بقاعدة بيانات)
+# نضع فيها IDs الموظفين المسموح لهم بالعمل
+staff_list = [] 
 
 bot = telebot.TeleBot(TOKEN)
 
-# --- 1. لوحات التحكم (Reply Keyboards) ---
+# --- 1. لوحات التحكم (Keyboards) ---
 
 def admin_keyboard():
-    """لوحة تحكم المدير رامي التي تظهر أسفل الشاشة"""
+    """لوحة المدير العام (رامي) - تظهر فيها إدارة الموظفين"""
     markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
     btns = [
         types.KeyboardButton("📊 التقارير اليومية"),
         types.KeyboardButton("📦 إدارة الطلبات"),
-        types.KeyboardButton("👥 العملاء والحظر"),
+        types.KeyboardButton("👥 الموظفين (إضافة/حذف)"),
         types.KeyboardButton("➕ إضافة منتج جديد"),
-        types.KeyboardButton("💬 الاستفسارات"),
         types.KeyboardButton("💰 ضبط الخصومات"),
         types.KeyboardButton("🛍️ فتح المتجر")
     ]
     markup.add(*btns)
     return markup
 
-def user_keyboard():
-    """لوحة تحكم الزبائن العادية"""
+def staff_keyboard():
+    """لوحة الموظفين - مهام محددة فقط"""
     markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
-    markup.add(
-        types.KeyboardButton("🛍️ دخول المتجر"),
-        types.KeyboardButton("📞 الدعم الفني")
-    )
+    btns = [
+        types.KeyboardButton("📦 إدارة الطلبات"),
+        types.KeyboardButton("💬 الاستفسارات"),
+        types.KeyboardButton("🛍️ فتح المتجر")
+    ]
+    markup.add(*btns)
+    return markup
+
+def user_keyboard():
+    """لوحة الزبائن"""
+    markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+    markup.add(types.KeyboardButton("🛍️ دخول المتجر"), types.KeyboardButton("📞 الدعم الفني"))
     return markup
 
 # --- 2. الأوامر الأساسية ---
 
 @bot.message_handler(commands=['start'])
 def start(message):
-    if message.from_user.id == ADMIN_ID:
-        bot.send_message(
-            message.chat.id, 
-            "أهلاً يا أستاذ رامي! لوحة الإدارة جاهزة للعمل.. ماذا تريد أن تفعل اليوم؟", 
-            reply_markup=admin_keyboard()
-        )
+    user_id = message.from_user.id
+    if user_id == ADMIN_ID:
+        bot.send_message(message.chat.id, "أهلاً يا رامي! لوحة الإدارة العامة جاهزة.", reply_markup=admin_keyboard())
+    elif user_id in staff_list:
+        bot.send_message(message.chat.id, "أهلاً بك (موظف مسؤول). لوحة مهامك جاهزة.", reply_markup=staff_keyboard())
     else:
-        bot.send_message(
-            message.chat.id, 
-            "مرحباً بك في مجوهرات رامي سمير الذهبية ✨\nنقدم لك أفخم الموديلات بأسعار مميزة.", 
-            reply_markup=user_keyboard()
-        )
+        bot.send_message(message.chat.id, "مرحباً بك في مجوهرات رامي سمير ✨", reply_markup=user_keyboard())
 
-# --- 3. معالجة بيانات المتجر (النشر والطلبات) ---
+# --- 3. إدارة الموظفين (للمدير رامي فقط) ---
+
+@bot.message_handler(func=lambda message: message.text == "👥 الموظفين (إضافة/حذف)")
+def manage_staff(message):
+    if message.from_user.id != ADMIN_ID: return
+    
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("➕ إضافة موظف", callback_data="add_staff"))
+    markup.add(types.InlineKeyboardButton("➖ حذف موظف", callback_data="del_staff"))
+    markup.add(types.InlineKeyboardButton("📜 قائمة الموظفين", callback_data="list_staff"))
+    
+    bot.send_message(ADMIN_ID, "إدارة طاقم العمل:", reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data in ["add_staff", "del_staff", "list_staff"])
+def staff_callbacks(call):
+    if call.data == "add_staff":
+        msg = bot.send_message(ADMIN_ID, "أرسل الآن ID الموظف الجديد (أرقام فقط):")
+        bot.register_next_step_handler(msg, process_add_staff)
+    elif call.data == "del_staff":
+        msg = bot.send_message(ADMIN_ID, "أرسل ID الموظف المراد حذفه:")
+        bot.register_next_step_handler(msg, process_del_staff)
+    elif call.data == "list_staff":
+        staff_str = "\n".join([str(s) for s in staff_list]) if staff_list else "لا يوجد موظفين حالياً"
+        bot.send_message(ADMIN_ID, f"قائمة معرفات الموظفين:\n{staff_str}")
+
+def process_add_staff(message):
+    try:
+        new_id = int(message.text)
+        if new_id not in staff_list:
+            staff_list.append(new_id)
+            bot.send_message(ADMIN_ID, f"✅ تم إضافة الموظف {new_id} بنجاح.")
+        else:
+            bot.send_message(ADMIN_ID, "هذا الموظف مضاف بالفعل.")
+    except:
+        bot.send_message(ADMIN_ID, "خطأ! يرجى إرسال أرقام فقط.")
+
+def process_del_staff(message):
+    try:
+        target_id = int(message.text)
+        if target_id in staff_list:
+            staff_list.remove(target_id)
+            bot.send_message(ADMIN_ID, f"❌ تم حذف الموظف {target_id}.")
+        else:
+            bot.send_message(ADMIN_ID, "هذا المعرف غير موجود بالقائمة.")
+    except:
+        bot.send_message(ADMIN_ID, "خطأ في الإدخال.")
+
+# --- 4. معالجة بيانات المتجر واستقبال الأوردرات ---
 
 @bot.message_handler(content_types=['web_app_data'])
 def handle_app_data(message):
+    user_id = message.from_user.id
+    # التحقق هل هو رامي أو موظف
+    if user_id != ADMIN_ID and user_id not in staff_list:
+        return
+
     try:
         data = json.loads(message.web_app_data.data)
-        
-        # أ- معالجة طلب النشر في القناة
         if data.get("action") == "publish":
             publish_to_channel(data)
-            bot.reply_to(message, "✅ تم النشر في القناة بنجاح يا رامي!")
-
-        # ب- معالجة طلب شراء جديد
+            bot.reply_to(message, "✅ تم النشر في القناة.")
         elif data.get("action") == "order":
-            send_order_to_admin(data)
-            bot.reply_to(message, "✅ تم إرسال طلبك بنجاح! سيتم التواصل معك قريباً.")
-
+            send_order_to_team(data)
+            bot.reply_to(message, "✅ تم إرسال الطلب للإدارة.")
     except Exception as e:
-        bot.send_message(ADMIN_ID, f"❌ حدث خطأ أثناء استقبال البيانات: {str(e)}")
-
-# --- 4. الوظائف التشغيلية ---
+        bot.send_message(ADMIN_ID, f"خطأ: {str(e)}")
 
 def publish_to_channel(p):
-    """وظيفة تنسيق ونشر المنتج في القناة مع 10 صور وأزرار"""
-    caption = (
-        f"✨ **{p['name']}** ✨\n\n"
-        f"📝 {p['desc']}\n\n"
-        f"📏 المقاسات المتاحة: {p['sizes']}\n"
-        f"💰 السعر: {p['price']} ج.م\n"
-        f"🏷 القسم: #{p.get('cat', 'مجوهرات')}\n\n"
-        f"🔥 {p.get('marketing_text', 'قطعة فريدة تليق بجمالك.. اطلبيها الآن!')}"
-    )
-
-    # تجهيز ميديا الصور (حتى 10)
-    media = []
-    for i, url in enumerate(p['imgs']):
-        if i == 0:
-            media.append(types.InputMediaPhoto(url, caption=caption, parse_mode="Markdown"))
-        else:
-            media.append(types.InputMediaPhoto(url))
-
-    if media:
-        # إرسال ألبوم الصور
-        bot.send_media_group(CHANNEL_ID, media)
-        
-        # إرسال زر الشراء تحت الألبوم
-        markup = types.InlineKeyboardMarkup()
-        # ملاحظة: يجب التأكد من ضبط رابط المتجر في BotFather ليعمل الزر
-        markup.add(types.InlineKeyboardButton("🛒 اطلب المنتج الآن", url=f"https://t.me/{bot.get_me().username}/app"))
-        bot.send_message(CHANNEL_ID, "للحجز والاستفسار اضغط على الزر 👇", reply_markup=markup)
-
-def send_order_to_admin(order):
-    """إرسال تفاصيل الأوردر كاملة إلى رامي"""
-    msg = (
-        f"🚨 **أوردر جديد يا رامي!**\n\n"
-        f"👤 العميل: {order['customer']}\n"
-        f"📞 الهاتف: {order['phone']}\n"
-        f"📍 العنوان: {order['address']}\n"
-        f"🚚 النوع: {'توصيل' if order['type']=='delivery' else 'استلام من المحل'}\n"
-        f"⏰ الموعد: {order['time']}\n"
-        f"--------------------------\n"
-        f"📦 المنتجات المطلوبة:\n"
-    )
-    for item in order['items']:
-        msg += f"- {item['name']} (مقاس: {item['selectedSize']})\n"
+    caption = f"✨ **{p['name']}** ✨\n\n📝 {p['desc']}\n💰 {p['price']} ج.م\n🏷 #{p.get('cat', 'مجوهرات')}"
+    media = [types.InputMediaPhoto(url, caption=caption if i==0 else "") for i, url in enumerate(p['imgs'])]
+    bot.send_media_group(CHANNEL_ID, media)
     
-    msg += f"\n💰 الإجمالي: {order['total']} ج.م"
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("🛒 اطلب الآن", url=f"https://t.me/{bot.get_me().username}/app"))
+    bot.send_message(CHANNEL_ID, "للحجز والاستفسار 👇", reply_markup=markup)
+
+def send_order_to_team(order):
+    msg = f"🚨 **أوردر جديد!**\n👤 العميل: {order['customer']}\n📞 الهاتف: {order['phone']}\n💰 الإجمالي: {order['total']} ج.م"
+    # إرسال لرامي
     bot.send_message(ADMIN_ID, msg)
-
-# --- 5. الرد على أزرار لوحة التحكم ---
-
-@bot.message_handler(func=lambda message: True)
-def handle_text_buttons(message):
-    if message.from_user.id == ADMIN_ID:
-        if message.text == "📊 التقارير اليومية":
-            bot.send_message(ADMIN_ID, "📈 تقرير المبيعات اليوم:\n- عدد الطلبات: 0\n- الإجمالي: 0 ج.م\n(يتم التحديث فور إتمام عمليات حقيقية)")
-        elif message.text == "➕ إضافة منتج جديد":
-            bot.send_message(ADMIN_ID, "تفضل بفتح المتجر واستخدام لوحة الإدارة لإضافة المنتج والقسم الجديد.")
-        # يمكنك إضافة ردود لباقي الأزرار هنا بنفس الطريقة
-    
-    elif message.text == "📞 الدعم الفني":
-        bot.send_message(message.chat.id, "أهلاً بك.. ارسل استفسارك الآن وسيرد عليك الأستاذ رامي في أقرب وقت.")
+    # إرسال لكل الموظفين لمتابعته
+    for staff_id in staff_list:
+        try: bot.send_message(staff_id, msg)
+        except: pass
 
 # --- بدء التشغيل ---
-print("✅ تم الدمج بنجاح.. البوت يعمل الآن ومرتبط بالقناة @RamySamir2026Gold")
+print("✅ البوت يعمل بنظام الموظفين المتطور...")
 bot.polling(none_stop=True)
+    
