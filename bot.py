@@ -1,7 +1,6 @@
 import telebot
 from telebot import types
 
-# --- الإعدادات الصحيحة بناءً على صورك ---
 TOKEN = "8395659007:AAHPrAQh6S50axorF_xrtI8XAFSRUyrXe3I"
 ADMIN_ID = 7020070481  # معرف رامي سمير
 CHANNEL_ID = -1003223634521
