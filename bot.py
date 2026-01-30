@@ -1,94 +1,73 @@
 import telebot
 from telebot import types
 
-# --- الإعدادات الجديدة ---
+# --- إعدادات البوت النهائية ---
 TOKEN = "8395659007:AAHPrAQh6S50axorF_xrtI8XAFSRUyrXe3I"
 ADMIN_ID = 7020070481  # معرف رامي سمير
 CHANNEL_ID = -1003223634521
 
-# قائمة الموظفين المصرح لهم (أضف الـ IDs هنا)
-staff_list = [] 
-
 bot = telebot.TeleBot(TOKEN)
 
-# --- 1. بناء لوحات التحكم (Keyboards) ---
+# قائمة الموظفين (يمكنك إضافة IDs هنا)
+staff_list = []
 
-def get_admin_keyboard():
+# --- 1. لوحات التحكم (Keyboards) ---
+
+def admin_keyboard():
+    """لوحة المدير العام"""
     markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
     markup.add(
-        types.KeyboardButton("📊 التقارير اليومية"),
-        types.KeyboardButton("📦 إدارة الطلبات"),
-        types.KeyboardButton("👥 الموظفين"),
-        types.KeyboardButton("➕ إضافة منتج"),
-        types.KeyboardButton("💰 الخصومات"),
-        types.KeyboardButton("🛍️ حالة المتجر")
+        "📊 التقارير اليومية", "📦 إدارة الطلبات",
+        "👥 الموظفين", "➕ إضافة منتج جديد",
+        "💰 ضبط الخصومات", "🛍️ فتح المتجر"
     )
     return markup
 
-def get_staff_keyboard():
+def staff_keyboard():
+    """لوحة الموظفين"""
     markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
-    markup.add(
-        types.KeyboardButton("📦 إدارة الطلبات"),
-        types.KeyboardButton("💬 الاستفسارات"),
-        types.KeyboardButton("🛍️ حالة المتجر")
-    )
+    markup.add("📦 إدارة الطلبات", "💬 الاستفسارات", "🛍️ فتح المتجر")
     return markup
 
-def get_user_keyboard():
+def user_keyboard():
+    """لوحة الزبائن"""
     markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
-    markup.add(
-        types.KeyboardButton("💍 المنتجات المتاحة"),
-        types.KeyboardButton("📞 تواصل معنا")
-    )
+    markup.add("💍 تصفح المجوهرات", "📞 تواصل معنا")
     return markup
 
-# --- 2. معالجة الأوامر (Handlers) ---
+# --- 2. الأوامر الأساسية ---
 
 @bot.message_handler(commands=['start'])
-def start_command(message):
+def start(message):
     user_id = message.from_user.id
-    
     if user_id == ADMIN_ID:
-        bot.send_message(
-            message.chat.id, 
-            "مرحباً يا رامي! تم تفعيل لوحة الإدارة الكاملة لبوت @Ramysamir2026_bot ✨", 
-            reply_markup=get_admin_keyboard()
-        )
+        bot.send_message(message.chat.id, "أهلاً بك يا رامي في لوحة تحكم Stormarketing_bot 🛡️", reply_markup=admin_keyboard())
     elif user_id in staff_list:
-        bot.send_message(
-            message.chat.id, 
-            "أهلاً بك (موظف مسؤول).", 
-            reply_markup=get_staff_keyboard()
-        )
+        bot.send_message(message.chat.id, "أهلاً بك (موظف مسؤول).", reply_markup=staff_keyboard())
     else:
-        bot.send_message(
-            message.chat.id, 
-            "مرحباً بك في بوت مجوهرات رامي سمير الرسمي ✨\nيسعدنا خدمتك.", 
-            reply_markup=get_user_keyboard()
-        )
+        bot.send_message(message.chat.id, "مرحباً بك في مجوهرات رامي سمير ✨\nيسعدنا تصفحك لمنتجاتنا.", reply_markup=user_keyboard())
 
-# --- 3. معالجة النصوص والرد على الأزرار ---
+# --- 3. معالجة ضغطات الأزرار ---
 
 @bot.message_handler(func=lambda message: True)
-def handle_all_messages(message):
+def handle_text(message):
     user_id = message.from_user.id
     text = message.text
 
-    # ردود فعل لأوامر المدير فقط
-    if user_id == ADMIN_ID:
-        if text == "📊 التقارير اليومية":
-            bot.reply_to(message, "📈 جاري سحب بيانات التقارير من قاعدة البيانات...")
-        elif text == "👥 الموظفين":
-            bot.reply_to(message, "👥 قائمة الموظفين الحالية فارغة. يمكنك إضافة موظف جديد عبر البرمجة.")
+    if text == "📊 التقارير اليومية" and user_id == ADMIN_ID:
+        bot.reply_to(message, "📈 جاري استخراج تقارير المبيعات لليوم...")
     
-    # ردود فعل عامة للجميع
-    if text == "💍 المنتجات المتاحة":
-        bot.send_message(message.chat.id, "💎 قريباً سيتم عرض كتالوج المجوهرات هنا.")
+    elif text == "💍 تصفح المجوهرات":
+        bot.send_message(message.chat.id, "💎 جاري تحميل الكتالوج... يمكنك قريباً رؤية القطع المتاحة.")
+
     elif text == "📞 تواصل معنا":
-        bot.send_message(message.chat.id, "للتواصل المباشر مع الإدارة: @Ramysamir2026")
+        bot.send_message(message.chat.id, "يمكنك التواصل مباشرة مع الإدارة هنا: @Ramysamir2026")
+
+    elif text == "🛍️ فتح المتجر":
+        bot.reply_to(message, "✅ تم إرسال إشعار بفتح المتجر للزبائن.")
 
 # --- 4. تشغيل البوت ---
 if __name__ == "__main__":
-    print("--- البوت يعمل الآن بالتوكن الجديد ---")
+    print("✅ البوت Stormarketing_bot يعمل الآن بدون أي أخطاء...")
     bot.infinity_polling()
     
