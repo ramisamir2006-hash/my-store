@@ -32,6 +32,10 @@
         .nav-item { color: #fff; text-decoration: none; font-size: 0.8em; text-align: center; cursor: pointer;}
         .hidden { display: none; }
         .show { display: block; }
+
+        /* ستايل الصور المتعددة في المعاينة */
+        .preview-imgs-scroll { display: flex; overflow-x: auto; gap: 5px; margin-top: 5px; }
+        .preview-img-item { width: 60px; height: 60px; border-radius: 5px; object-fit: cover; border: 1px solid var(--main-gold); }
     </style>
 </head>
 <body>
@@ -48,31 +52,43 @@
     <button class="cat-btn" onclick="filterCat('سلاسل')">سلاسل</button>
 </div>
 
-<div class="products-grid" id="mainGrid">
-    </div>
+<div class="products-grid" id="mainGrid"></div>
 
 <div id="adminPanel" class="admin-panel">
-    <h3>⚙️ لوحة تحكم المدير</h3>
+    <h3 style="color: gold; text-align: center;">🛡️ لوحة إدارة المحتوى</h3>
+    
     <div class="form-group">
-        <label>اسم المنتج:</label>
-        <input type="text" id="p_name">
+        <label>📸 صور المنتج (حتى 10 صور - ضع الروابط هنا):</label>
+        <textarea id="p_imgs" placeholder="ضع رابط كل صورة في سطر جديد..." rows="4" oninput="updatePreview()"></textarea>
     </div>
+
     <div class="form-group">
-        <label>السعر:</label>
-        <input type="number" id="p_price">
+        <label>💎 اسم الموديل:</label>
+        <input type="text" id="p_name" placeholder="مثلاً: غويشة لازوردي ملكي" oninput="updatePreview()">
     </div>
+
     <div class="form-group">
-        <label>القسم:</label>
-        <select id="p_cat">
-            <option value="غوايش">غوايش</option>
-            <option value="خواتم">خواتم</option>
-        </select>
+        <label>📝 وصف تشويقي (يظهر للعميل):</label>
+        <textarea id="p_desc" placeholder="اكتب جملة تجذب الزبائن.." oninput="updatePreview()"></textarea>
     </div>
+
     <div class="form-group">
-        <label>المقاسات المتاحة (فواصل):</label>
-        <input type="text" id="p_sizes" placeholder="مثال: 60, 62, 64">
+        <label>💰 السعر (ج.م):</label>
+        <input type="number" id="p_price" oninput="updatePreview()">
     </div>
-    <button class="buy-btn" onclick="saveProduct(true)">حفظ ونشر في القناة 📢</button>
+
+    <div class="form-group">
+        <label>📏 المقاسات المتاحة:</label>
+        <input type="text" id="p_sizes" placeholder="60, 62, 64" oninput="updatePreview()">
+    </div>
+
+    <div id="previewArea" style="background: #333; padding: 10px; border-radius: 8px; margin-bottom: 15px; border: 1px dashed gold;">
+        <p style="font-size: 0.8em; color: #aaa; margin: 0 0 5px 0;">👁️ معاينة المنشور:</p>
+        <div id="previewContent" style="font-size: 0.9em;">
+            </div>
+    </div>
+
+    <button class="buy-btn" onclick="reviewAndPublish()">🚀 حفظ ونشر على القناة فوراً</button>
     <br><br>
     <button class="buy-btn" style="background: red;" onclick="closePanels()">إغلاق</button>
 </div>
@@ -113,7 +129,6 @@
     let tg = window.Telegram.WebApp;
     tg.expand();
 
-    // التحقق من هوية المدير
     const isAdmin = tg.initDataUnsafe.user?.id === 7020070481;
     if(isAdmin) document.getElementById('adminTab').style.display = 'block';
 
@@ -141,6 +156,54 @@
             `;
         });
         document.getElementById('mainGrid').innerHTML = html;
+    }
+
+    function updatePreview() {
+        let name = document.getElementById('p_name').value || "اسم المنتج";
+        let price = document.getElementById('p_price').value || "0";
+        let desc = document.getElementById('p_desc').value || "الوصف هنا..";
+        let imgs = document.getElementById('p_imgs').value.split('\n').filter(url => url.trim() !== "");
+        let sizes = document.getElementById('p_sizes').value || "غير محدد";
+
+        let imgHtml = '<div class="preview-imgs-scroll">';
+        imgs.forEach(url => {
+            imgHtml += `<img src="${url}" class="preview-img-item" onerror="this.src='https://via.placeholder.com/60'">`;
+        });
+        imgHtml += '</div>';
+
+        document.getElementById('previewContent').innerHTML = `
+            ${imgHtml}
+            <b>${name}</b><br>
+            <span style="color:gold">${price} ج.م</span><br>
+            <small>${desc}</small><br>
+            <small>المقاسات: ${sizes}</small>
+        `;
+    }
+
+    function reviewAndPublish() {
+        let name = document.getElementById('p_name').value;
+        let price = document.getElementById('p_price').value;
+        let desc = document.getElementById('p_desc').value;
+        let imgs = document.getElementById('p_imgs').value.split('\n').filter(url => url.trim() !== "");
+        let sizes = document.getElementById('p_sizes').value;
+
+        if(!name || !price || imgs.length === 0) {
+            tg.showAlert("يا رامي، لازم تضيف الاسم والسعر وصورة واحدة على الأقل!");
+            return;
+        }
+
+        let productData = {
+            action: "publish_to_channel",
+            name: name,
+            price: price,
+            description: desc,
+            images: imgs,
+            sizes: sizes,
+            marketing_text: "🔥 عرض لفترة محدودة! اطلبي دلوقتي قبل نفاذ الكمية ✨"
+        };
+
+        tg.sendData(JSON.stringify(productData));
+        tg.showPopup({message: "جاري المعالجة والنشر على القناة.."});
     }
 
     function addToCart(id) {
@@ -172,18 +235,4 @@
     function confirmOrder() {
         let orderData = {
             customer: document.getElementById('cust_name').value,
-            phone: document.getElementById('cust_phone').value,
-            address: document.getElementById('cust_addr').value,
-            type: document.getElementById('ship_type').value,
-            time: document.getElementById('ship_time').value,
-            items: cart,
-            total: cart.reduce((s, i) => s + i.price, 0)
-        };
-        tg.sendData(JSON.stringify(orderData));
-    }
-
-    renderProducts();
-</script>
-</body>
-    </html>
-    
+            phone:
