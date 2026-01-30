@@ -1,1 +1,49 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>إدارة my-store</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; }
+        .card { background: white; max-width: 500px; margin: auto; padding: 25px; border-radius: 15px; shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        input, select { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; }
+        button { width: 100%; padding: 15px; background: #0088cc; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>🛠 إدارة my-store</h2>
+        <input type="text" id="name" placeholder="اسم المنتج">
+        <input type="text" id="size" placeholder="المقاسات (مثلاً: L, XL, XXL)">
+        <select id="cat">
+            <option value="ملابس">قسم الملابس</option>
+            <option value="أحذية">قسم الأحذية</option>
+        </select>
+        <input type="number" id="price" placeholder="السعر الأساسي">
+        <input type="number" id="discRetail" placeholder="خصم التجزئة (%)">
+        <input type="number" id="discWholesale" placeholder="خصم الجملة (%)">
+        <input type="text" id="image" placeholder="رابط صورة المنتج">
+        <button onclick="publish()">🚀 تعديل ونشر للقناة</button>
+    </div>
 
+    <script>
+        async function publish() {
+            const data = {
+                name: document.getElementById('name').value,
+                size: document.getElementById('size').value,
+                cat: document.getElementById('cat').value,
+                price: document.getElementById('price').value,
+                discRetail: document.getElementById('discRetail').value,
+                discWholesale: document.getElementById('discWholesale').value,
+                image: document.getElementById('image').value
+            };
+            await fetch('/publish', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+            alert('تم النشر بنجاح!');
+        }
+    </script>
+</body>
+</html>
