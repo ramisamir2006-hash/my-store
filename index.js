@@ -3,31 +3,35 @@ const TelegramBot = require('node-telegram-bot-api');
 const path = require('path');
 
 const app = express();
-// المنصات السحابية تفرض استخدام المنفذ من متغيرات البيئة
-const port = process.env.PORT || 8080; 
+// ملاحظة: المنصات السحابية تستخدم المنفذ 8080 أو الممرر عبر process.env.PORT
+const PORT = process.env.PORT || 8080;
 
-// --- تصحيح الأخطاء الكبيرة في الربط ---
-// 1. تفعيل الوصول لملفات مجلد public (مثل index.html)
+// إعداد ملفات الواجهة (مجلد public)
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 2. نقطة فحص الحالة (Health Check) لمنع تعليق السيرفر
+// نقطة فحص الحالة لضمان عدم توقف السيرفر
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.listen(port, () => {
-    console.log(`Server is live on port ${port}`);
+// تشغيل السيرفر أولاً
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
 });
 
-// --- إعداد البوت ---
-// تأكد من إضافة TELEGRAM_TOKEN في إعدادات السيرفر (Environment Variables)
+// تشغيل البوت باستخدام التوكن من متغيرات البيئة
 const token = process.env.TELEGRAM_TOKEN;
+
 if (!token) {
-    console.error("خطأ: لم يتم ضبط توكن البوت في متغيرات البيئة!");
+    console.error("خطأ: TELEGRAM_TOKEN غير موجود في إعدادات السيرفر!");
 } else {
-    const bot = new TelegramBot(token, {polling: true});
-    
+    // استخدم polling: true للبساطة في البداية
+    const bot = new TelegramBot(token, { polling: true });
+
     bot.on('message', (msg) => {
-        bot.sendMessage(msg.chat.id, "أهلاً بك في متجري! البوت يعمل الآن بنجاح.");
+        const chatId = msg.chat.id;
+        bot.sendMessage(chatId, 'أهلاً بك! المتجر يعمل الآن بنجاح 🚀');
     });
+
+    console.log("Bot is polling...");
 }
