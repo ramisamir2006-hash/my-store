@@ -3,17 +3,29 @@ const express = require('express');
 const app = express();
 const path = require('path');
 
+// التوكن الخاص بك
 const token = '8395659007:AAHPrAQh6S50axorF_xrtI8XAFSRUyrXe3I';
 const bot = new TelegramBot(token, {polling: true});
 
-// تشغيل سيرفر ويب بسيط لـ Koyeb
+// إعداد سيرفر ويب بسيط (مهم جداً لتجاوز خطأ Unhealthy في Koyeb)
 app.use(express.static('public'));
 const PORT = process.env.PORT || 8000;
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+
+app.get('/', (req, res) => {
+  res.send('البوت يعمل بنجاح!');
 });
 
-// أوامر البوت الأساسية
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
+
+// أوامر البوت
 bot.onText(/\/start/, (msg) => {
-    bot.sendMessage(msg.chat.id, "مرحباً بك في متجري! استخدم القائمة الجانبية للتصفح.");
+  const chatId = msg.chat.id;
+  bot.sendMessage(chatId, "🛍️ مرحباً بك في متجرنا!\nاستخدم الأوامر بالأسفل لتصفح المنتجات.");
+});
+
+// رسالة خطأ عامة للتشخيص
+bot.on('polling_error', (error) => {
+  console.log(error);
 });
