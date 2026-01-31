@@ -1,6 +1,7 @@
 {
-  "name": "my-store",
-  "version": "1.0.0",
+  "name": "my-store-accessories",
+  "version": "1.1.0",
+  "description": "نظام إدارة متجر إكسسوارات حريمي - بوت تليجرام",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
@@ -10,6 +11,13 @@
     "express": "^4.19.2"
   },
   "engines": {
-    "node": "20.x"
-  }
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "telegram-bot",
+    "accessories-store",
+    "koyeb-deployment"
+  ],
+  "author": "Rami Samir",
+  "license": "ISC"
 }
