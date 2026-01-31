@@ -3,29 +3,28 @@ const TelegramBot = require('node-telegram-bot-api');
 const path = require('path');
 
 const app = express();
-// المنصات السحابية تفرض استخدام المنفذ من المتغيرات البيئية
-const port = process.env.PORT || 8080; 
+const PORT = process.env.PORT || 8080; // ضروري لمنصة Koyeb
 
-// ربط مجلد الواجهة
+// تفعيل الملفات العامة (واجهة المتجر)
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/', (req, res) => {
-    res.send('Bot is running properly...');
+    res.send('My-Store Bot is Running!');
 });
 
-app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
+app.listen(PORT, () => {
+    console.log(`Server is listening on port ${PORT}`);
 });
 
-// قراءة التوكن بأمان
+// تفعيل البوت باستخدام المتغير الذي سنضعه في Koyeb
 const token = process.env.TELEGRAM_TOKEN;
 
 if (!token) {
-    console.error("ERROR: TELEGRAM_TOKEN is missing!");
+    console.error("خطأ: لم يتم العثور على TELEGRAM_TOKEN في إعدادات السيرفر!");
 } else {
     const bot = new TelegramBot(token, { polling: true });
     
     bot.on('message', (msg) => {
-        bot.sendMessage(msg.chat.id, "أهلاً بك! البوت يعمل الآن من السيرفر بنجاح.");
+        bot.sendMessage(msg.chat.id, "مرحباً بك في متجر my-store! تم التفعيل بنجاح 🚀");
     });
 }
