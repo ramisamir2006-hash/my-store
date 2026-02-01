@@ -4,67 +4,75 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>my-store | إكسسوارات رامي سمير</title>
-    <!-- ربط مكتبة Supabase -->
     <script src="https://cdn.jsdelivr.net"></script>
     <style>
-        :root { --gold: #D4AF37; --black: #111; --gray: #f4f4f4; }
-        body { font-family: 'Cairo', sans-serif; background: var(--gray); margin: 0; padding: 0; }
-        header { background: var(--black); color: var(--gold); padding: 30px; text-align: center; border-bottom: 4px solid var(--gold); box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 25px; padding: 40px; max-width: 1200px; margin: auto; }
-        .card { background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 20px rgba(0,0,0,0.1); transition: 0.4s; position: relative; border: 1px solid #eee; }
-        .card:hover { transform: translateY(-10px); box-shadow: 0 15px 30px rgba(0,0,0,0.2); }
+        :root { --gold: #D4AF37; --black: #111; }
+        body { font-family: 'Cairo', sans-serif; background: #f9f9f9; margin: 0; }
+        header { background: var(--black); color: var(--gold); padding: 25px; text-align: center; border-bottom: 4px solid var(--gold); }
+        .filter-bar { text-align: center; padding: 15px; background: #fff; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .filter-btn { background: white; border: 1px solid var(--gold); color: var(--black); padding: 8px 20px; margin: 5px; border-radius: 20px; cursor: pointer; transition: 0.3s; }
+        .filter-btn.active, .filter-btn:hover { background: var(--gold); color: white; }
+        .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; padding: 20px; }
+        .card { background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); text-align: center; border: 1px solid #eee; }
         .card img { width: 100%; height: 250px; object-fit: cover; }
-        .info { padding: 20px; text-align: center; }
-        .info h3 { margin: 10px 0; color: var(--black); font-size: 1.4em; }
-        .price-retail { color: #888; text-decoration: line-through; font-size: 0.9em; margin-bottom: 5px; }
-        .price-wholesale { color: #27ae60; font-weight: bold; font-size: 1.3em; margin: 5px 0; }
-        .btn-buy { background: var(--black); color: var(--gold); border: 2px solid var(--gold); padding: 12px; border-radius: 10px; cursor: pointer; width: 100%; font-weight: bold; transition: 0.3s; }
-        .btn-buy:hover { background: var(--gold); color: white; }
+        .category-tag { background: var(--gold); color: #000; font-size: 11px; padding: 2px 10px; border-radius: 10px; display: inline-block; margin-top: 10px; }
+        .info { padding: 15px; }
+        .price { font-size: 1.2em; color: #27ae60; font-weight: bold; }
+        .btn-buy { background: var(--black); color: var(--gold); border: 2px solid var(--gold); padding: 10px; width: 100%; border-radius: 8px; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <header>
     <h1>✨ my-store ✨</h1>
-    <p>أرقى الإكسسوارات الحريمي - جملة وقطاعي</p>
+    <p>أرقى الإكسسوارات الحريمي</p>
 </header>
 
-<div class="container" id="products-grid">
-    <!-- المنتجات تظهر هنا -->
+<div class="filter-bar" id="filter-buttons">
+    <button class="filter-btn active" onclick="filterItems('الكل', this)">الكل</button>
 </div>
 
+<div class="container" id="products-grid"></div>
+
 <script>
-    // بيانات الربط (استبدلها ببياناتك)
-    const SUPABASE_URL = 'https://your-project-id.supabase.co';
-    const SUPABASE_KEY = 'your-public-anon-key';
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const SUPABASE_URL = 'https://your-url.supabase.co';
+    const SUPABASE_KEY = 'your-key';
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    async function loadProducts() {
-        const { data: products, error } = await supabaseClient
-            .from('products')
-            .select('*')
-            .order('created_at', { ascending: false });
-
+    async function load() {
+        const { data } = await supabase.from('products').select('*').order('created_at', {ascending: false});
         const grid = document.getElementById('products-grid');
-        grid.innerHTML = ''; 
+        const filterBar = document.getElementById('filter-buttons');
+        const categories = new Set(['الكل']);
 
-        if (products) {
-            products.forEach(p => {
-                grid.innerHTML += `
-                    <div class="card">
-                        <img src="${p.image_url}" alt="${p.name}">
-                        <div class="info">
-                            <h3>${p.name}</h3>
-                            <p class="price-retail">قطاعي: ${p.price_retail} ج.م</p>
-                            <p class="price-wholesale">جملة: ${p.price_wholesale} ج.م</p>
-                            <button class="btn-buy" onclick="window.open('https://t.me')">اطلب عبر تليجرام</button>
-                        </div>
+        data.forEach(p => {
+            categories.add(p.category);
+            grid.innerHTML += `
+                <div class="card" data-cat="${p.category}">
+                    <img src="${p.image_url}">
+                    <div class="info">
+                        <span class="category-tag">${p.category}</span>
+                        <h3>${p.name}</h3>
+                        <p class="price">جملة: ${p.price_wholesale} ج.م</p>
+                        <button class="btn-buy" onclick="window.open('https://t.me')">اطلب الآن</button>
                     </div>
-                `;
-            });
-        }
+                </div>`;
+        });
+
+        // إنشاء أزرار الأقسام تلقائياً
+        [...categories].filter(c => c !== 'الكل').forEach(c => {
+            filterBar.innerHTML += `<button class="filter-btn" onclick="filterItems('${c}', this)">${c}</button>`;
+        });
     }
-    loadProducts();
+
+    function filterItems(cat, btn) {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('.card').forEach(card => {
+            card.style.display = (cat === 'الكل' || card.dataset.cat === cat) ? 'block' : 'none';
+        });
+    }
+    load();
 </script>
 </body>
 </html>
