@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>متجر إكسسوارات ذهب 2026</title>
+    <script src="https://cdn.jsdelivr.net"></script>
+    <style>
+        :root { --gold: #D4AF37; --black: #1a1a1a; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4; margin: 0; }
+        header { background: var(--black); color: var(--gold); padding: 20px; text-align: center; border-bottom: 3px solid var(--gold); }
+        .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; padding: 20px; }
+        .card { background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: 0.3s; }
+        .card:hover { transform: translateY(-5px); }
+        .card img { width: 100%; height: 200px; object-fit: cover; }
+        .info { padding: 15px; text-align: center; }
+        .price-retail { color: #555; text-decoration: line-through; font-size: 0.9em; }
+        .price-wholesale { color: var(--black); font-weight: bold; font-size: 1.2em; }
+        .btn-buy { background: var(--gold); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; width: 100%; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>متجر Ramy Samir 2026 Gold ✨</h1>
+    <p>للإكسسوارات الحريمي - جملة وقطاعي</p>
+</header>
+
+<div class="container" id="products-grid">
+    <!-- المنتجات سيتم تحميلها هنا تلقائياً من قاعدة البيانات -->
+</div>
+
+<script>
+    // إعدادات Supabase (ضع بياناتك هنا)
+    const SUPABASE_URL = 'https://your-project.supabase.co';
+    const SUPABASE_KEY = 'your-anon-key';
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    async function fetchProducts() {
+        const { data: products, error } = await supabase.from('products').select('*');
+        const grid = document.getElementById('products-grid');
+        
+        if (products) {
+            products.forEach(p => {
+                grid.innerHTML += `
+                    <div class="card">
+                        <img src="${p.image_url}" alt="${p.name}">
+                        <div class="info">
+                            <h3>${p.name}</h3>
+                            <p class="price-retail">قطاعي: ${p.price_retail} ج.م</p>
+                            <p class="price-wholesale">جملة: ${p.price_wholesale} ج.م</p>
+                            <button class="btn-buy" onclick="window.open('https://t.me')">اطلب الآن عبر تليجرام</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+    }
+    fetchProducts();
+</script>
+</body>
+</html>
