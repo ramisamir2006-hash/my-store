@@ -1,30 +1,40 @@
 import os
 import telebot
 from supabase import create_client
-from telebot import types # مهم جداً
+from telebot import types
 
-# إعدادات الربط
+# سحب البيانات آلياً من إعدادات Koyeb
 TOKEN = os.getenv("BOT_TOKEN")
-URL = "https://xounbdcfmjuzgtpeefyj.supabase.co"
-KEY = os.getenv("SUPABASE_KEY")
+SUPABASE_URL = "https://xounbdcfmjuzgtpeefyj.supabase.co"
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+CHANNEL = "@RamySamir2026Gold"
 
 bot = telebot.TeleBot(TOKEN)
-db = create_client(URL, KEY)
+db = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# --- كود الأزرار المضمون ---
-@bot.message_handler(commands=['start', 'restart', 'help'])
-def control_panel(message):
-    # مسح أي أزرار قديمة وإضافة الجديدة
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False)
-    
-    markup.row(types.KeyboardButton("🛍️ إضافة منتج"), types.KeyboardButton("📊 التقارير"))
-    markup.row(types.KeyboardButton("📁 إضافة قسم"), types.KeyboardButton("💡 كلمات تسويقية"))
-    markup.row(types.KeyboardButton("🚀 حملة إعلانية"))
-    
-    bot.send_message(
-        message.chat.id, 
-        "✅ تم تفعيل لوحة تحكم my-store\nاختر من الأزرار بالأسفل للبدء:", 
-        reply_markup=markup
-    )
+# --- لوحة التحكم (الأزرار) ---
+@bot.message_handler(commands=['start', 'menu'])
+def start_panel(message):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    markup.add("🛍️ إضافة منتج", "📊 التقارير", "📁 إضافة قسم", "💡 تسويق")
+    bot.send_message(message.chat.id, "✅ متصل بملف: 70mkt1o8v...\n💎 لوحة تحكم my-store جاهزة:", reply_markup=markup)
 
-# بقية الكود الخاص بمعالجة الرسائل (handle_all) يوضع هنا...
+# --- معالجة إضافة المنتجات ---
+@bot.message_handler(func=lambda m: "-" in m.text)
+def add_item(message):
+    try:
+        parts = [i.strip() for i in message.text.split("-")]
+        cat, name, retail, wholesale, img = parts
+        db.table("products").insert({
+            "category": cat, "name": name, "price_retail": retail, 
+            "price_wholesale": wholesale, "image_url": img
+        }).execute()
+        
+        caption = f"✨ {name}\n💰 جملة: {wholesale} ج.م\n📍 https://ramisamir2006-hash.github.io"
+        bot.send_photo(CHANNEL, img, caption=caption)
+        bot.reply_to(message, "✅ تم النشر بنجاح!")
+    except:
+        bot.reply_to(message, "⚠️ خطأ في التنسيق! (قسم - اسم - قطاعي - جملة - رابط)")
+
+# تشغيل البوت بنظام Infinity لضمان عدم التوقف
+bot.infinity_polling()
