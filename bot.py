@@ -1,3 +1,24 @@
+# --- كود البداية لظهور الأزرار فوراً ---
+@bot.message_handler(commands=['start'])
+def start_command(message):
+    # إنشاء لوحة المفاتيح
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    
+    # تعريف الأزرار
+    btn1 = types.KeyboardButton("🛍️ إضافة منتج")
+    btn2 = types.KeyboardButton("📊 التقارير")
+    btn3 = types.KeyboardButton("📁 إضافة قسم")
+    btn4 = types.KeyboardButton("💡 كلمات تسويقية")
+    
+    # إضافة الأزرار للماركب
+    markup.add(btn1, btn2, btn3, btn4)
+    
+    # إرسال الرسالة مع الأزرار
+    bot.send_message(
+        message.chat.id, 
+        "مرحباً بك يا رامي! 💎\nتم تفعيل لوحة تحكم my-store بنجاح.", 
+        reply_markup=markup
+    )
 import os
 import telebot
 from supabase import create_client
