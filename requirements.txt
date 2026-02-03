@@ -1,4 +1,5 @@
 pyTelegramBotAPI
 supabase
 flask
+gunicorn
 httpx
