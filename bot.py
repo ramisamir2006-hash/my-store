@@ -1,9 +1,11 @@
-import os, telebot, types
+import os
+import telebot
+import threading
+from telebot import types
 from supabase import create_client
 from flask import Flask
-from threading import Thread
 
-# إعدادات المنصة
+# --- إعدادات المنصة الأساسية ---
 app = Flask(__name__)
 TOKEN = os.getenv("BOT_TOKEN")
 SUPABASE_URL = "https://xounbdcfmjuzgtpeefyj.supabase.co"
@@ -14,21 +16,22 @@ bot = telebot.TeleBot(TOKEN)
 db = create_client(SUPABASE_URL, SUPABASE_KEY)
 user_states = {}
 
-# نظام الخصومات
-PROMO_CODES = {"RAMY2026": 0.15, "GOLD": 50} # أكواد يدوية
-DISCOUNT_LIMIT = 1500 # خصم آلي عند 1500 ج.م
+# --- نظام الخصومات المطور ---
+PROMO_CODES = {"RAMY2026": 0.15, "GOLD": 50}  # أكواد يدوية
+DISCOUNT_LIMIT = 1500  # تفعيل الخصم الآلي عند شراء بضائع بـ 1500 ج.م فأكثر
 
 @app.route('/')
-def home(): return "OCTO Platform Active"
+def home():
+    return "OCTO Platform is Healthy and Online"
 
-# --- 1. أزرار القناة الاحترافية ---
+# --- 1. أزرار القناة الاحترافية (تظهر للعملاء) ---
 def get_client_buttons(prod_name):
     markup = types.InlineKeyboardMarkup(row_width=2)
-    # رابط يفتح البوت مباشرة مع أمر الشراء
     start_param = prod_name.replace(" ", "_")
+    
     btn_buy = types.InlineKeyboardButton("🛒 إضافة للسلة", url=f"https://t.me/Stormmarketing_bot?start=buy_{start_param}")
-    btn_store = types.InlineKeyboardButton("🏪 المعرض", url="https://ramisamir2006-hash.github.io")
-    btn_help = types.InlineKeyboardButton("💬 استفسار", url="https://t.me/RamySamir2026")
+    btn_store = types.InlineKeyboardButton("🏪 فتح المتجر (المعرض)", url="https://ramisamir2006-hash.github.io")
+    btn_help = types.InlineKeyboardButton("💬 استفسار / مساعدة", url="https://t.me/RamySamir2026")
     btn_cart = types.InlineKeyboardButton("📜 عرض السلة", url=f"https://t.me/Stormmarketing_bot?start=cart")
     
     markup.add(btn_buy)
@@ -36,39 +39,45 @@ def get_client_buttons(prod_name):
     markup.add(btn_cart)
     return markup
 
-# --- 2. معالجة الطلب والخصومات ---
+# --- 2. لوحة تحكم المدير (إضافة المنتجات والتقارير) ---
+def show_main_menu(chat_id):
+    markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+    markup.add("➕ إضافة منتج", "📊 التقارير", "📁 أقسام", "💡 تسويق")
+    bot.send_message(chat_id, "💎 لوحة تحكم منصة my-store المحدثة:", reply_markup=markup)
+
 @bot.message_handler(commands=['start'])
 def start_handler(message):
     args = message.text.split()
     if len(args) > 1 and args[1].startswith("buy_"):
+        # مسار العميل عند الضغط على "إضافة للسلة" من القناة
         name = args[1].replace("buy_", "").replace("_", " ")
         user_states[message.chat.id] = {'prod': name, 'step': 'QTY'}
         bot.send_message(message.chat.id, f"🛍️ أهلاً بك! لطلب **{name}**، كم قطعة تريد؟")
     else:
-        main_admin_menu(message)
+        # مسار المدير
+        show_main_menu(message.chat.id)
 
+# --- 3. معالجة الطلب وحساب الخصومات ---
 @bot.message_handler(func=lambda m: user_states.get(m.chat.id, {}).get('step') == 'QTY')
 def calc_total(message):
     try:
         qty = int(message.text)
-        # نفترض السعر 100 ج.م للتجربة (يجب جلبه من الداتابيز لاحقاً)
-        unit_price = 100 
+        unit_price = 100  # بفرض السعر الافتراضي (يمكنك ربطه بالداتابيز)
         total = qty * unit_price
         
-        # تطبيق الخصم الآلي
         discount = 0
         if total >= DISCOUNT_LIMIT:
-            discount = total * 0.10
+            discount = total * 0.10  # خصم آلي 10%
             total -= discount
-            bot.send_message(message.chat.id, f"🎊 مبروك! حصلت على خصم آلي {discount} ج.م لتجاوزك مبلغ {DISCOUNT_LIMIT} ج.م")
+            bot.send_message(message.chat.id, f"🎊 تهانينا! حصلت على خصم آلي بقيمة {discount} ج.م لتجاوزك حد الـ 1500 ج.م")
 
         user_states[message.chat.id].update({'qty': qty, 'total': total, 'discount': discount, 'step': 'PROMO'})
         
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
         markup.add("لا يوجد كود")
-        bot.send_message(message.chat.id, "🎁 هل لديك كود خصم يدوي؟ (أرسله الآن أو اضغط الزر):", reply_markup=markup)
-    except:
-        bot.send_message(message.chat.id, "❌ يرجى إرسال رقم صحيح.")
+        bot.send_message(message.chat.id, "🎁 هل لديك كود خصم مخصص لعملاء القناة؟ أرسله الآن أو اضغط الزر:", reply_markup=markup)
+    except ValueError:
+        bot.send_message(message.chat.id, "❌ من فضلك أرسل رقماً صحيحاً للكمية.")
 
 @bot.message_handler(func=lambda m: user_states.get(m.chat.id, {}).get('step') == 'PROMO')
 def apply_promo(message):
@@ -76,38 +85,46 @@ def apply_promo(message):
     data = user_states[message.chat.id]
     
     if code in PROMO_CODES:
-        promo_val = PROMO_CODES[code]
-        deduction = data['total'] * promo_val if isinstance(promo_val, float) else promo_val
+        promo_benefit = PROMO_CODES[code]
+        deduction = data['total'] * promo_benefit if isinstance(promo_benefit, float) else promo_benefit
         data['total'] -= deduction
         data['discount'] += deduction
-        bot.send_message(message.chat.id, f"✅ تم تطبيق الكود! الإجمالي النهائي: {data['total']} ج.م")
+        bot.send_message(message.chat.id, f"✅ تم تطبيق الكود بنجاح! الإجمالي بعد الخصم الإضافي: {data['total']} ج.م")
     
-    user_states[message.chat.id]['step'] = 'FINAL'
-    bot.send_message(message.chat.id, "👤 الآن أرسل اسمك الثلاثي وعنوانك للتوصيل:")
+    user_states[message.chat.id]['step'] = 'FINAL_INFO'
+    bot.send_message(message.chat.id, "👤 من فضلك سجل بياناتك الآن (الاسم الثلاثي + الهاتف + العنوان بالتفصيل):")
 
-# --- 3. لوحة تحكم المدير ---
-def main_admin_menu(message):
-    markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
-    markup.add("➕ إضافة منتج", "📊 التقارير")
-    bot.send_message(message.chat.id, "💎 لوحة تحكم منصة my-store المحدثة:", reply_markup=markup)
+# --- 4. معالجة إضافة منتج جديد (للمدير) ---
+@bot.message_handler(func=lambda m: m.text == "➕ إضافة منتج")
+def add_product_start(message):
+    user_states[message.chat.id] = {'step': 'WAIT_PHOTO'}
+    bot.send_message(message.chat.id, "📸 أرسل صورة المنتج لبدء النشر في القناة:")
+
+@bot.message_handler(content_types=['photo'], func=lambda m: user_states.get(m.chat.id, {}).get('step') == 'WAIT_PHOTO')
+def get_photo(message):
+    user_states[message.chat.id].update({'photo': message.photo[-1].file_id, 'step': 'WAIT_NAME'})
+    bot.send_message(message.chat.id, "✏️ أرسل اسم المنتج:")
+
+@bot.message_handler(func=lambda m: user_states.get(m.chat.id, {}).get('step') == 'WAIT_NAME')
+def get_name(message):
+    name = message.text
+    photo = user_states[message.chat.id]['photo']
+    
+    # النشر التلقائي في القناة مع الأزرار الاحترافية
+    bot.send_photo(CHANNEL_ID, photo, caption=f"✨ المنتج الجديد: {name}\n💰 السعر: سيتم تحديده عند الطلب", reply_markup=get_client_buttons(name))
+    
+    bot.send_message(message.chat.id, "✅ تم نشر المنتج بنجاح في القناة مع كافة أزرار التحكم والخصومات!")
+    show_main_menu(message.chat.id)
+
+# --- 5. تشغيل السيرفر والبوت (حل مشكلة Koyeb) ---
+def start_bot_polling():
+    print("🚀 Bot is Polling...")
+    bot.infinity_polling()
 
 if __name__ == "__main__":
-    # تشغيل Flask لتجنب خطأ Unhealthy في Koyeb
-    Thread(target=lambda: app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))).start()
-    bot.infinity_polling()
-  # تشغيل البوت في الخلفية عند تشغيل Flask بواسطة gunicorn
-def start_bot():
-    print("🚀 Bot is starting...")
-    bot.infinity_polling()
-    
-if __name__ == "__main__":
-    # هذا الجزء للموقع المحلي فقط
-    Thread(target=start_bot).start()
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
-else:
-    # هذا الجزء هو ما سيستخدمه Koyeb عبر gunicorn
-    Thread(target=start_bot).start()
-  
-# دالة إظهار لوحة التحكم الرئيسية
-def show_main_menu(chat_id):
+    # تشغيل البوت في Thread منفصل لضمان استمراره في الخلفية
+    threading.Thread(target=start_bot_polling, daemon=True).start()
+    # تشغيل سيرفر ويب Flask لاجتياز الـ Health Check في Koyeb
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host='0.0.0.0', port=port)
     
