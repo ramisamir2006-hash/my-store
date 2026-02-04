@@ -164,3 +164,54 @@ def finalize_order_to_db(chat_id, data, client_info):
         "status": "قيد المراجعة",
         "created_at": "now()"
     }).execute()
+# قائمة أكواد الخصم (يمكنك لاحقاً وضعها في الداتابيز)
+PROMO_CODES = {
+    "RAMY2026": 0.15,  # خصم 15%
+    "OCTO": 0.20,      # خصم 20% لعملاء القناة المميزين
+    "GOLD": 50         # خصم ثابت 50 جنيه
+}
+
+# --- تعديل خطوة ما بعد اختيار طريقة الاستلام ---
+@bot.message_handler(func=lambda m: user_states.get(m.chat.id, {}).get('step') == 'DELIVERY')
+def ask_for_promo(message):
+    user_states[message.chat.id].update({'delivery': message.text, 'step': 'PROMO_CHECK'})
+    
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+    markup.add("لا يوجد لدي كود")
+    bot.send_message(message.chat.id, "🎁 هل لديك كود خصم مخصص لعملاء القناة؟ أرسله الآن أو اضغط على الزر أدناه:", reply_markup=markup)
+
+# --- معالجة كود الخصم المكتوب ---
+@bot.message_handler(func=lambda m: user_states.get(m.chat.id, {}).get('step') == 'PROMO_CHECK')
+def apply_promo(message):
+    code = message.text.upper()
+    data = user_states[message.chat.id]
+    total = data['total_price']
+    discount_val = data['discount'] # الخصم الآلي السابق (الـ 1500 جنيه)
+
+    if code in PROMO_CODES:
+        promo_benefit = PROMO_CODES[code]
+        
+        # إذا كان الخصم نسبة (مثلاً 0.15)
+        if isinstance(promo_benefit, float):
+            promo_discount = total * promo_benefit
+        # إذا كان الخصم مبلغ ثابت (مثلاً 50)
+        else:
+            promo_discount = promo_benefit
+            
+        total -= promo_discount
+        discount_val += promo_discount
+        
+        bot.send_message(message.chat.id, f"✅ تم تطبيق الكود بنجاح! خصم إضافي: {promo_discount} ج.م")
+    elif code != "لا يوجد لدي كود":
+        bot.send_message(message.chat.id, "❌ عذراً، هذا الكود غير صحيح أو انتهت صلاحيته.")
+
+    # التحديث النهائي للبيانات قبل طلب المعلومات الشخصية
+    user_states[message.chat.id].update({
+        'total_price': total,
+        'discount': discount_val,
+        'promo_used': code if code in PROMO_CODES else "None",
+        'step': 'INFO'
+    })
+    
+    bot.send_message(message.chat.id, f"💰 الإجمالي النهائي المعتمد: {total} ج.م\n\n📝 من فضلك سجل بياناتك (الاسم + الهاتف + العنوان):")
+    
