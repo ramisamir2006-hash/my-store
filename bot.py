@@ -95,4 +95,15 @@ if __name__ == "__main__":
     # تشغيل Flask لتجنب خطأ Unhealthy في Koyeb
     Thread(target=lambda: app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))).start()
     bot.infinity_polling()
-    
+  # تشغيل البوت في الخلفية عند تشغيل Flask بواسطة gunicorn
+def start_bot():
+    print("🚀 Bot is starting...")
+    bot.infinity_polling()
+if __name__ == "__main__":
+    # هذا الجزء للموقع المحلي فقط
+    Thread(target=start_bot).start()
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
+else:
+    # هذا الجزء هو ما سيستخدمه Koyeb عبر gunicorn
+    Thread(target=start_bot).start()
+        
