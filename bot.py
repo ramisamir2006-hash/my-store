@@ -107,4 +107,7 @@ if __name__ == "__main__":
 else:
     # هذا الجزء هو ما سيستخدمه Koyeb عبر gunicorn
     Thread(target=start_bot).start()
-        
+  
+# دالة إظهار لوحة التحكم الرئيسية
+def show_main_menu(chat_id):
+    
