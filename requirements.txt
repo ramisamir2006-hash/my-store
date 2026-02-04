@@ -1,5 +1,4 @@
-pyTelegramBotAPI
+gunicorn 
+flask 
+pyTelegramBotAPI 
 supabase
-flask
-gunicorn
-httpx
