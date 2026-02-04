@@ -63,3 +63,24 @@ def get_quantity(message):
     
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add("🚚 توصيل منزلي (دليفري)", "
+# دالة إنشاء لوحة أزرار العميل (التي تظهر في الصورة)
+def get_client_buttons(product_name):
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    
+    # ربط زر "إضافة للسلة" بالبوت مباشرة لإتمام عملية الشراء
+    # ملاحظة: استبدل YOUR_BOT_USERNAME باسم يوزر البوت الخاص بك
+    btn_add_cart = types.InlineKeyboardButton("🛒 إضافة للسلة", url=f"https://t.me/Stormmarketing_bot?start=order_{product_name}")
+    
+    # زر فتح المتجر الإلكتروني
+    btn_store = types.InlineKeyboardButton("🏪 فتح المتجر (المعرض)", url="https://ramisamir2006-hash.github.io")
+    
+    # زر التواصل المباشر للاستفسار
+    btn_help = types.InlineKeyboardButton("💬 استفسار / مساعدة", url="https://t.me/RamySamir2026")
+    
+    # زر عرض السلة الخاصة بالعميل داخل البوت
+    btn_view_cart = types.InlineKeyboardButton("📜 عرض السلة", url="https://t.me/Stormmarketing_bot?start=view_cart")
+
+    markup.add(btn_add_cart)
+    markup.add(btn_help, btn_store)
+    markup.add(btn_view_cart)
+    return markup
