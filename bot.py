@@ -99,6 +99,7 @@ if __name__ == "__main__":
 def start_bot():
     print("🚀 Bot is starting...")
     bot.infinity_polling()
+    
 if __name__ == "__main__":
     # هذا الجزء للموقع المحلي فقط
     Thread(target=start_bot).start()
