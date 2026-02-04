@@ -107,4 +107,60 @@ def main_menu(message):
 if __name__ == "__main__":
     Thread(target=lambda: app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))).start()
     bot.infinity_polling()
-    
+    # إعداد قيمة الخصم والحد الأدنى
+DISCOUNT_THRESHOLD = 1500  # الحد الأدنى لتفعيل الخصم
+DISCOUNT_PERCENT = 0.10     # نسبة الخصم 10%
+
+# --- دالة حساب السعر النهائي ---
+def calculate_final_price(total_price):
+    if total_price >= DISCOUNT_THRESHOLD:
+        discount_amount = total_price * DISCOUNT_PERCENT
+        final_price = total_price - discount_amount
+        return final_price, discount_amount
+    return total_price, 0
+
+# --- تعديل معالجة الطلب لتشمل الخصم الآلي ---
+@bot.message_handler(func=lambda m: user_states.get(m.chat.id, {}).get('step') == 'QTY')
+def set_qty(message):
+    try:
+        qty = int(message.text)
+        data = user_states[message.chat.id]
+        
+        # جلب سعر المنتج من البيانات المخزنة (بفرض أن السعر مخزن عند الضغط على الزر)
+        price_per_unit = float(data.get('unit_price', 0))
+        total_before_discount = qty * price_per_unit
+        
+        final_price, discount_val = calculate_final_price(total_before_discount)
+        
+        user_states[message.chat.id].update({
+            'qty': qty, 
+            'total_price': final_price,
+            'discount': discount_val,
+            'step': 'DELIVERY'
+        })
+
+        if discount_val > 0:
+            msg = (f"🎊 تهانينا! لقد حصلت على خصم بقيمة {discount_val} ج.م\n"
+                   f"💰 الإجمالي بعد الخصم: {final_price} ج.م\n\n"
+                   f"📦 اختر طريقة الاستلام:")
+        else:
+            msg = f"💰 الإجمالي: {final_price} ج.م\n\n📦 اختر طريقة الاستلام:"
+
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        markup.add("🚚 دليفري (عنواني)", "🏪 استلام من مقر المتجر")
+        bot.send_message(message.chat.id, msg, reply_markup=markup)
+        
+    except ValueError:
+        bot.send_message(message.chat.id, "❌ من فضلك أرسل رقماً صحيحاً للكمية.")
+# --- حفظ الطلب في الداتابيز مع تفاصيل الخصم ---
+def finalize_order_to_db(chat_id, data, client_info):
+    db.table("orders").insert({
+        "client_info": client_info,
+        "product": data['prod'],
+        "quantity": data['qty'],
+        "total_amount": data['total_price'],
+        "discount_applied": data['discount'],
+        "method": data['delivery'],
+        "status": "قيد المراجعة",
+        "created_at": "now()"
+    }).execute()
