@@ -2,90 +2,53 @@ import os, telebot, threading
 from telebot import types
 from flask import Flask
 
-# --- الإعدادات ---
+# --- الإعدادات الأساسية ---
 app = Flask(__name__)
 TOKEN = os.getenv("BOT_TOKEN")
-CHANNEL_ID = "@RamySamir2026Gold" # قناتك الرسمية
+CHANNEL_ID = "@RamySamir2026Gold"  # قناتك العامة للعملاء
+STAFF_GROUP_ID = -1002376483563   # ID جروب الموظفين (تأكد من إضافة البوت فيه كأدمن)
+STAFF_LINK = "https://t.me/+Zu6NKNYqTgVkZGFk"
+ADMIN_ID = 5664157143 # ضع معرفك الشخصي هنا ليكون لك صلاحية فصل الموظفين
+
 bot = telebot.TeleBot(TOKEN)
-user_data = {} # لتخزين بيانات المنتج مؤقتاً أثناء الإدخال
+user_data = {}  # لتخزين بيانات المنتج مؤقتاً
 
 @app.route('/')
-def home(): return "Store Engine is Running"
+def home(): return "Store Engine is Running and Healthy"
 
-# --- لوحة التحكم الرئيسية (تظهر للمدير فقط) ---
-def admin_keyboard():
+# --- نظام الصلاحيات ---
+def is_staff(user_id):
+    try:
+        member = bot.get_chat_member(STAFF_GROUP_ID, user_id)
+        return member.status in ['creator', 'administrator', 'member']
+    except:
+        return False
+
+# --- لوحة التحكم (للمدير والموظفين) ---
+def main_keyboard(user_id):
     markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
-    markup.add("➕ إضافة منتج جديد", "📊 تقارير المبيعات", "⚙️ إعدادات المتجر")
+    if user_id == ADMIN_ID or is_staff(user_id):
+        markup.add("➕ إضافة منتج جديد", "📊 التقارير")
+    if user_id == ADMIN_ID:
+        markup.add("👥 إدارة الموظفين")
     return markup
 
 @bot.message_handler(commands=['start'])
 def start(message):
-    bot.send_message(message.chat.id, "👋 أهلاً بك في لوحة تحكم متجرك المتطور.", reply_markup=admin_keyboard())
+    bot.send_message(message.chat.id, "👋 أهلاً بك في لوحة تحكم متجر ماريا.", 
+                     reply_markup=main_keyboard(message.from_user.id))
 
-# --- نظام جمع بيانات المنتج (سؤال تلو الآخر) ---
+# --- إدارة الموظفين (للمدير فقط) ---
+@bot.message_handler(func=lambda m: m.text == "👥 إدارة الموظفين")
+def manage_staff(message):
+    if message.from_user.id == ADMIN_ID:
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton("🔗 رابط جروب التوظيف", url=STAFF_LINK))
+        bot.send_message(message.chat.id, "👨‍💼 **إدارة الفريق:**\n\n1. لإضافة موظف: أرسل له الرابط للدخول.\n2. لفصل موظف: قم بطرده من الجروب وسيفقد صلاحياته فوراً.", 
+                         reply_markup=markup, parse_mode="Markdown")
+
+# --- نظام إضافة المنتج (سؤال تلو الآخر) ---
 @bot.message_handler(func=lambda m: m.text == "➕ إضافة منتج جديد")
-def add_product_step1(message):
-    user_data[message.chat.id] = {}
-    bot.send_message(message.chat.id, "📸 خطوة 1: أرسل صورة المنتج.")
-    bot.register_next_step_handler(message, process_photo)
-
-def process_photo(message):
-    if message.content_type != 'photo':
-        bot.send_message(message.chat.id, "❌ يرجى إرسال صورة!")
-        return bot.register_next_step_handler(message, process_photo)
-    user_data[message.chat.id]['photo'] = message.photo[-1].file_id
-    bot.send_message(message.chat.id, "✏️ خطوة 2: أرسل اسم المنتج.")
-    bot.register_next_step_handler(message, process_name)
-
-def process_name(message):
-    user_data[message.chat.id]['name'] = message.text
-    bot.send_message(message.chat.id, "💰 خطوة 3: أرسل السعر (أرقام فقط).")
-    bot.register_next_step_handler(message, process_price)
-
-def process_price(message):
-    user_data[message.chat.id]['price'] = message.text
-    bot.send_message(message.chat.id, "📏 خطوة 4: أرسل المقاسات المتاحة (مثلاً: 60، 65، 70).")
-    bot.register_next_step_handler(message, process_sizes)
-
-def process_sizes(message):
-    user_data[message.chat.id]['sizes'] = message.text
-    # --- المعاينة قبل النشر ---
-    data = user_data[message.chat.id]
-    preview_text = (f"📝 **معاينة المنتج قبل النشر:**\n\n"
-                    f"📦 الاسم: {data['name']}\n"
-                    f"💰 السعر: {data['price']} ج.م\n"
-                    f"📏 المقاسات: {data['sizes']}\n\n"
-                    f"هل تود النشر الآن في القناة؟")
-    
-    markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("✅ تأكيد ونشر", callback_data="confirm_publish"),
-               types.InlineKeyboardButton("❌ إلغاء", callback_data="cancel_publish"))
-    
-    bot.send_photo(message.chat.id, data['photo'], caption=preview_text, reply_markup=markup, parse_mode="Markdown")
-
-# --- تنفيذ النشر في القناة بأزرار احترافية ---
-@bot.callback_query_handler(func=lambda call: True)
-def callback_query(call):
-    if call.data == "confirm_publish":
-        data = user_data[call.message.chat.id]
-        
-        # إنشاء أزرار المقاسات والشراء للقناة [كما في الصورة المرجعية]
-        markup = types.InlineKeyboardMarkup(row_width=3)
-        size_btns = [types.InlineKeyboardButton(f"مقاس {s.strip()}", callback_data=f"buy_{s.strip()}") for s in data['sizes'].split('،' if '،' in data['sizes'] else ',')]
-        markup.add(*size_btns)
-        markup.add(types.InlineKeyboardButton("💬 استفسار / مساعدة", url="https://t.me/RamySamir2026"),
-                   types.InlineKeyboardButton("🏪 فتح المتجر (المعرض)", url="https://ramisamir2006-hash.github.io"))
-        markup.add(types.InlineKeyboardButton("📜 عرض السلة", callback_data="view_cart"))
-
-        caption = (f"✨ {data['name']}\n\n"
-                   f"💰 السعر: {data['price']} ج.م\n"
-                   f"✅ متوفر الآن! اطلب قبل نفاذ الكمية.")
-        
-        bot.send_photo(CHANNEL_ID, data['photo'], caption=caption, reply_markup=markup)
-        bot.answer_callback_query(call.id, "✅ تم النشر في القناة بنجاح!")
-        bot.send_message(call.message.chat.id, "🚀 تم النشر!", reply_markup=admin_keyboard())
-
-# --- تشغيل السيرفر والبوت (حل Koyeb النهائى) ---
-if __name__ == "__main__":
-    threading.Thread(target=lambda: bot.infinity_polling(), daemon=True).start()
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
+def add_product_start(message):
+    if not (message.from_user.id == ADMIN_ID or is_staff(message.from_user
+                                                         
