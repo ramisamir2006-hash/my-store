@@ -1,3 +1,17 @@
+import sqlite3
+
+# دالة لإنشاء الداتابيز وربطها بالبوت
+def init_db():
+    conn = sqlite3.connect('store.db')
+    c = conn.cursor()
+    # جدول الموظفين
+    c.execute('''CREATE TABLE IF NOT EXISTS staff (user_id INTEGER PRIMARY KEY)''')
+    # جدول المنتجات
+    c.execute('''CREATE TABLE IF NOT EXISTS products (id INTEGER PRIMARY KEY, name TEXT, price TEXT, photo TEXT, sizes TEXT)''')
+    conn.commit()
+    conn.close()
+
+init_db() # تشغيل الداتابيز فور تشغيل البوت
 import os, telebot, threading
 from telebot import types
 from flask import Flask
