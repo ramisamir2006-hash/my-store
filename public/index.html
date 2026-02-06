@@ -1,1 +1,121 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة مجوهرات رامي سمير ✨</title>
+    <style>
+        :root {
+            --primary-color: #d81b60;
+            --secondary-color: #f8bbd0;
+            --bg-color: #fff5f8;
+            --text-color: #444;
+        }
 
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: var(--bg-color); 
+            padding: 15px; 
+            color: var(--text-color);
+            margin: 0;
+        }
+
+        .container { 
+            background: white; 
+            max-width: 450px; 
+            margin: 20px auto; 
+            padding: 25px; 
+            border-radius: 25px; 
+            box-shadow: 0 15px 35px rgba(216, 27, 96, 0.15); 
+            border: 1px solid #ffe4e1; 
+        }
+
+        h2 { 
+            text-align: center; 
+            color: var(--primary-color); 
+            margin-bottom: 20px; 
+            font-size: 22px;
+            border-bottom: 2px solid var(--secondary-color);
+            padding-bottom: 10px;
+        }
+
+        label { 
+            display: block; 
+            margin-top: 15px; 
+            font-weight: bold; 
+            color: #880e4f;
+            font-size: 14px;
+        }
+
+        input, select { 
+            width: 100%; 
+            padding: 12px; 
+            margin: 8px 0; 
+            border: 1px solid var(--secondary-color); 
+            border-radius: 12px; 
+            box-sizing: border-box; 
+            outline: none; 
+            transition: 0.3s;
+            font-size: 16px;
+        }
+
+        input:focus { 
+            border-color: var(--primary-color); 
+            box-shadow: 0 0 8px rgba(216, 27, 96, 0.2); 
+        }
+
+        .price-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        button { 
+            width: 100%; 
+            padding: 16px; 
+            background: linear-gradient(45deg, #d81b60, #ec407a); 
+            color: white; 
+            border: none; 
+            border-radius: 12px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            font-size: 18px; 
+            margin-top: 25px; 
+            transition: 0.3s;
+            box-shadow: 0 4px 15px rgba(216, 27, 96, 0.3);
+        }
+
+        button:hover { 
+            background: linear-gradient(45deg, #ad1457, #d81b60); 
+            transform: translateY(-2px); 
+        }
+
+        .footer {
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>💎 لوحة نشر المجوهرات 💎</h2>
+        
+        <label>اسم القطعة (العنوان)</label>
+        <input type="text" id="name" placeholder="مثلاً: كوليه فصوص سواروفسكي">
+        
+        <label>المادة / اللون</label>
+        <input type="text" id="material" placeholder="مثلاً: فضة عيار 925 / ذهبي">
+        
+        <label>التصنيف</label>
+        <select id="cat">
+            <option value="خواتم">خواتم 💍</option>
+            <option value="سلاسل">سلاسل وقلائد 📿</option>
+            <option value="أقراط">أقراط (حلق) ✨</option>
+            <option value="ساعات">ساعات حريمي ⌚</option>
+            <option value="أطقم">أطقم هدايا كاملة 🎁</option>
+        </select>
+        
+        <div class="price-row">
+          
