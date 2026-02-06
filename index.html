@@ -2,21 +2,237 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>Stormarketing Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <title>متجر رامي سمير الذهبي</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; border-top: 5px solid #0088cc; }
-        h1 { color: #333; }
-        .status { color: #2ecc71; font-weight: bold; margin-bottom: 20px; }
-        .info { font-size: 0.9rem; color: #666; }
+        :root { --main-gold: #D4AF37; --dark-bg: #1a1a1a; --text-white: #ffffff; }
+        body { font-family: 'Cairo', sans-serif; background: var(--dark-bg); color: var(--text-white); margin: 0; padding-bottom: 80px; }
+        .header { background: linear-gradient(45deg, #000, #444); padding: 20px; text-align: center; border-bottom: 2px solid var(--main-gold); }
+        .category-bar { display: flex; overflow-x: auto; padding: 10px; gap: 10px; background: #222; }
+        .cat-btn { background: none; border: 1px solid var(--main-gold); color: gold; padding: 5px 15px; border-radius: 20px; white-space: nowrap; }
+        
+        /* كروت المنتجات */
+        .products-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px; }
+        .product-card { background: #282828; border-radius: 12px; overflow: hidden; border: 1px solid #333; position: relative; }
+        .product-img { width: 100%; height: 150px; background: #444; object-fit: cover; }
+        .product-info { padding: 10px; text-align: center; }
+        .price { color: var(--main-gold); font-weight: bold; font-size: 1.2em; }
+        
+        /* المقاسات ونوع العميل */
+        .size-selector { margin: 5px 0; font-size: 0.8em; }
+        .buy-btn { background: var(--main-gold); border: none; width: 100%; padding: 8px; font-weight: bold; cursor: pointer; }
+
+        /* سلة المشتريات ولوحة التحكم */
+        .cart-panel, .admin-panel { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--dark-bg); z-index: 1000; display: none; overflow-y: auto; padding: 20px; box-sizing: border-box; }
+        .form-group { margin-bottom: 15px; }
+        input, select, textarea { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid var(--main-gold); background: #333; color: #fff; box-sizing: border-box; }
+        
+        .footer-nav { position: fixed; bottom: 0; width: 100%; background: #000; display: flex; justify-content: space-around; padding: 10px 0; border-top: 2px solid var(--main-gold); }
+        .nav-item { color: #fff; text-decoration: none; font-size: 0.8em; text-align: center; cursor: pointer;}
+        .hidden { display: none; }
+        .show { display: block; }
+
+        /* ستايل الصور المتعددة في المعاينة */
+        .preview-imgs-scroll { display: flex; overflow-x: auto; gap: 5px; margin-top: 5px; }
+        .preview-img-item { width: 60px; height: 60px; border-radius: 5px; object-fit: cover; border: 1px solid var(--main-gold); }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h1>🤖 Stormarketing Bot</h1>
-        <p class="status">● النظام يعمل بنجاح 24/7</p>
-        <p class="info">قاعدة البيانات: متصلة (store.db)</p>
-        <p class="info">قناة العرض: @RamySamir2026Gold</p>
+
+<div class="header">
+    <h2>✨ مـجـوهرات رامـي سـمـيـر ✨</h2>
+    <div id="userTypeBadge" style="color: gold; font-size: 0.9em;">حساب: عميل تجزئة</div>
+</div>
+
+<div class="category-bar" id="cats">
+    <button class="cat-btn" onclick="filterCat('الكل')">الكل</button>
+    <button class="cat-btn" onclick="filterCat('غوايش')">غوايش</button>
+    <button class="cat-btn" onclick="filterCat('خواتم')">خواتم</button>
+    <button class="cat-btn" onclick="filterCat('سلاسل')">سلاسل</button>
+</div>
+
+<div class="products-grid" id="mainGrid"></div>
+
+<div id="adminPanel" class="admin-panel">
+    <h3 style="color: gold; text-align: center;">🛡️ لوحة إدارة المحتوى</h3>
+    
+    <div class="form-group">
+        <label>📸 صور المنتج (حتى 10 صور - ضع الروابط هنا):</label>
+        <textarea id="p_imgs" placeholder="ضع رابط كل صورة في سطر جديد..." rows="4" oninput="updatePreview()"></textarea>
     </div>
-</body>
-</html>
+
+    <div class="form-group">
+        <label>💎 اسم الموديل:</label>
+        <input type="text" id="p_name" placeholder="مثلاً: غويشة لازوردي ملكي" oninput="updatePreview()">
+    </div>
+
+    <div class="form-group">
+        <label>📝 وصف تشويقي (يظهر للعميل):</label>
+        <textarea id="p_desc" placeholder="اكتب جملة تجذب الزبائن.." oninput="updatePreview()"></textarea>
+    </div>
+
+    <div class="form-group">
+        <label>💰 السعر (ج.م):</label>
+        <input type="number" id="p_price" oninput="updatePreview()">
+    </div>
+
+    <div class="form-group">
+        <label>📏 المقاسات المتاحة:</label>
+        <input type="text" id="p_sizes" placeholder="60, 62, 64" oninput="updatePreview()">
+    </div>
+
+    <div id="previewArea" style="background: #333; padding: 10px; border-radius: 8px; margin-bottom: 15px; border: 1px dashed gold;">
+        <p style="font-size: 0.8em; color: #aaa; margin: 0 0 5px 0;">👁️ معاينة المنشور:</p>
+        <div id="previewContent" style="font-size: 0.9em;">
+            </div>
+    </div>
+
+    <button class="buy-btn" onclick="reviewAndPublish()">🚀 حفظ ونشر على القناة فوراً</button>
+    <br><br>
+    <button class="buy-btn" style="background: red;" onclick="closePanels()">إغلاق</button>
+</div>
+
+<div id="cartPanel" class="cart-panel">
+    <h3>🛒 استكمال الطلب</h3>
+    <div class="form-group">
+        <input type="text" id="cust_name" placeholder="الاسم بالكامل">
+    </div>
+    <div class="form-group">
+        <input type="tel" id="cust_phone" placeholder="رقم الهاتف">
+    </div>
+    <div class="form-group">
+        <textarea id="cust_addr" placeholder="العنوان بالتفصيل"></textarea>
+    </div>
+    <div class="form-group">
+        <label>طريقة الاستلام:</label>
+        <select id="ship_type">
+            <option value="delivery">شحن للمنزل</option>
+            <option value="pickup">استلام من المحل</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label>موعد الاستلام المفضّل:</label>
+        <input type="datetime-local" id="ship_time">
+    </div>
+    <div id="orderSummary"></div>
+    <button class="buy-btn" style="background: #28a745;" onclick="confirmOrder()">تأكيد الأوردر 🚀</button>
+</div>
+
+<div class="footer-nav">
+    <div class="nav-item" onclick="showPanel('main')">🏠 الرئيسية</div>
+    <div class="nav-item" onclick="showPanel('cart')">🛒 السلة</div>
+    <div class="nav-item" id="adminTab" onclick="showPanel('admin')" style="display: none;">⚙️ المدير</div>
+</div>
+
+<script>
+    let tg = window.Telegram.WebApp;
+    tg.expand();
+
+    const isAdmin = tg.initDataUnsafe.user?.id === 7020070481;
+    if(isAdmin) document.getElementById('adminTab').style.display = 'block';
+
+    let cart = [];
+    let products = JSON.parse(localStorage.getItem('my_db')) || [
+        {id:1, name: 'غويشة كليوباترا', price: 5000, cat: 'غوايش', sizes: '60,62', img: ''},
+        {id:2, name: 'خاتم سوليتير', price: 3500, cat: 'خواتم', sizes: '18,19', img: ''}
+    ];
+
+    function renderProducts() {
+        let html = '';
+        products.forEach(p => {
+            html += `
+                <div class="product-card">
+                    <div class="product-img"></div>
+                    <div class="product-info">
+                        <div class="product-name">${p.name}</div>
+                        <div class="price">${p.price} ج.م</div>
+                        <select class="size-selector" id="size_${p.id}">
+                            ${p.sizes.split(',').map(s => `<option>${s}</option>`).join('')}
+                        </select>
+                        <button class="buy-btn" onclick="addToCart(${p.id})">إضافة للسلة 🛒</button>
+                    </div>
+                </div>
+            `;
+        });
+        document.getElementById('mainGrid').innerHTML = html;
+    }
+
+    function updatePreview() {
+        let name = document.getElementById('p_name').value || "اسم المنتج";
+        let price = document.getElementById('p_price').value || "0";
+        let desc = document.getElementById('p_desc').value || "الوصف هنا..";
+        let imgs = document.getElementById('p_imgs').value.split('\n').filter(url => url.trim() !== "");
+        let sizes = document.getElementById('p_sizes').value || "غير محدد";
+
+        let imgHtml = '<div class="preview-imgs-scroll">';
+        imgs.forEach(url => {
+            imgHtml += `<img src="${url}" class="preview-img-item" onerror="this.src='https://via.placeholder.com/60'">`;
+        });
+        imgHtml += '</div>';
+
+        document.getElementById('previewContent').innerHTML = `
+            ${imgHtml}
+            <b>${name}</b><br>
+            <span style="color:gold">${price} ج.م</span><br>
+            <small>${desc}</small><br>
+            <small>المقاسات: ${sizes}</small>
+        `;
+    }
+
+    function reviewAndPublish() {
+        let name = document.getElementById('p_name').value;
+        let price = document.getElementById('p_price').value;
+        let desc = document.getElementById('p_desc').value;
+        let imgs = document.getElementById('p_imgs').value.split('\n').filter(url => url.trim() !== "");
+        let sizes = document.getElementById('p_sizes').value;
+
+        if(!name || !price || imgs.length === 0) {
+            tg.showAlert("يا رامي، لازم تضيف الاسم والسعر وصورة واحدة على الأقل!");
+            return;
+        }
+
+        let productData = {
+            action: "publish_to_channel",
+            name: name,
+            price: price,
+            description: desc,
+            images: imgs,
+            sizes: sizes,
+            marketing_text: "🔥 عرض لفترة محدودة! اطلبي دلوقتي قبل نفاذ الكمية ✨"
+        };
+
+        tg.sendData(JSON.stringify(productData));
+        tg.showPopup({message: "جاري المعالجة والنشر على القناة.."});
+    }
+
+    function addToCart(id) {
+        let p = products.find(i => i.id === id);
+        let selectedSize = document.getElementById('size_'+id).value;
+        cart.push({...p, selectedSize});
+        tg.showPopup({message: "تمت الإضافة للسلة"});
+    }
+
+    function showPanel(type) {
+        closePanels();
+        if(type === 'admin') document.getElementById('adminPanel').style.display = 'block';
+        if(type === 'cart') {
+            document.getElementById('cartPanel').style.display = 'block';
+            updateOrderSummary();
+        }
+    }
+
+    function closePanels() {
+        document.getElementById('adminPanel').style.display = 'none';
+        document.getElementById('cartPanel').style.display = 'none';
+    }
+
+    function updateOrderSummary() {
+        let total = cart.reduce((s, i) => s + i.price, 0);
+        document.getElementById('orderSummary').innerHTML = `<h4>الإجمالي: ${total} ج.م</h4>`;
+    }
+
+    function confirmOrder() {
+        let orderData = {
+            customer: document.getElementById('cust_name').value,
+            phone:
