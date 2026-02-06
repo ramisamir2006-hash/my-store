@@ -95,5 +95,19 @@ def callback_handler(call):
                 markup.add(types.InlineKeyboardButton(f"🛒 طلب مقاس {s.strip()}", callback_data=f"order_{s.strip()}_{data['name']}"))
             
             caption = f"✨ **{data['name']}**\n💰 السعر: {data['price']} ج.م\n\nاطلبي الآن عبر الضغط على المقاس 👇"
-            bot.send_
+            bot.send_photo(CHANNEL_ID, data['photo'], caption=caption, reply_markup=markup, parse_mode="Markdown")
+            bot.send_message(call.message.chat.id, "🚀 تم النشر بنجاح!")
+
+    elif call.data.startswith("order_"):
+        # إرسال تفاصيل الطلب لجروب الموظفين فوراً
+        details = call.data.split("_")
+        customer = f"@{call.from_user.username}" if call.from_user.username else f"ID: {call.from_user.id}"
+        order_msg = f"🛍️ **طلب جديد من القناة:**\n👤 العميل: {customer}\n📦 المنتج: {details[2]}\n📏 المقاس: {details[1]}"
+        bot.send_message(STAFF_GROUP_ID, order_msg)
+        bot.answer_callback_query(call.id, "✅ تم إرسال طلبك بنجاح، سيتواصل معك الموظفون.")
+
+# --- تشغيل النظام المختلط ---
+if __name__ == "__main__":
+    threading.Thread(target=lambda: bot.infinity_polling(), daemon=True).start()
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
     
