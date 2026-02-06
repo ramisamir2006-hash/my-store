@@ -2,22 +2,20 @@ import os, telebot, threading, sqlite3
 from telebot import types
 from flask import Flask
 
-# --- إعدادات المنصة ---
+# --- إعدادات الربط النهائية ---
 app = Flask(__name__)
-# التوكن الجديد الذي أرسلته
-TOKEN = "8395659007:AAHaIQBJD_dTd6Np46fNeNS-WHoAbLNK0rk" 
-CHANNEL_ID = "@RamySamir2026Gold" 
-STAFF_GROUP_ID = -1002376483563 
-ADMIN_ID = 7020070481 # معرفك كمدير
+TOKEN = "8395659007:AAHaIQBJD_dTd6Np46fNeNS-WHoAbLNK0rk" # التوكن الجديد
+CHANNEL_ID = "@RamySamir2026Gold" # قناة النشر العامة
+STAFF_GROUP_ID = -1002376483563 # جروب استلام طلبات العملاء
+ADMIN_ID = 7020070481 # معرف المدير (رامي)
 
 bot = telebot.TeleBot(TOKEN)
 user_data = {} 
 
-# --- 1. إدارة قاعدة البيانات (SQLite) ---
+# --- 1. نظام قاعدة البيانات (تعمل 24 ساعة) ---
 def init_db():
     conn = sqlite3.connect('store.db')
     c = conn.cursor()
-    # إنشاء جدول المنتجات إذا لم يكن موجوداً
     c.execute('''CREATE TABLE IF NOT EXISTS products 
                  (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, price TEXT, photo TEXT, sizes TEXT)''')
     conn.commit()
@@ -25,36 +23,41 @@ def init_db():
 
 init_db()
 
+# --- 2. ربط واجهة الموقع (index.html) ---
 @app.route('/')
-def home(): return "Stormarketing System is Active"
+def home():
+    try:
+        with open("index.html", "r", encoding="utf-8") as f:
+            return f.read()
+    except:
+        return "System is Online - index.html not found"
 
-# --- 2. لوحة التحكم الرئيسية (تظهر للمدير فقط) ---
+# --- 3. لوحة تحكم المدير (الأزرار الرئيسية) ---
 def main_admin_keyboard():
     markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
     markup.add("➕ إضافة منتج جديد", "📊 تقارير المبيعات")
-    markup.add("📁 إدارة الأقسام", "👥 فريق العمل (الموظفين)")
-    markup.add("🖼️ تغيير غلاف المتجر", "⚙️ الإعدادات العامة")
+    markup.add("👥 فريق العمل", "⚙️ الإعدادات")
     return markup
 
 @bot.message_handler(commands=['start'])
 def start(message):
     if message.from_user.id == ADMIN_ID:
-        welcome = f"🤖 **أهلاً بك يا مدير رامي.**\nلوحة التحكم جاهزة الآن."
-        bot.send_message(message.chat.id, welcome, reply_markup=main_admin_keyboard(), parse_mode="Markdown")
+        bot.send_message(message.chat.id, "👋 **أهلاً بك يا مدير رامي**\nالداتابيز نشطة ونظام النشر جاهز.", 
+                         reply_markup=main_admin_keyboard(), parse_mode="Markdown")
     else:
-        bot.send_message(message.chat.id, "🏪 أهلاً بك في متجر ماريا. تابع القناة لمشاهدة أحدث المنتجات.")
+        bot.send_message(message.chat.id, "🏪 مرحباً بك في متجرنا. تابع القناة لمشاهدة المنتجات.")
 
-# --- 3. نظام إضافة المنتج خطوة بخطوة ---
+# --- 4. عملية إضافة منتج والنشر في القناة ---
 @bot.message_handler(func=lambda m: m.text == "➕ إضافة منتج جديد")
 def start_add(message):
     if message.from_user.id != ADMIN_ID: return
     user_data[message.chat.id] = {}
-    bot.send_message(message.chat.id, "📸 **1. أرسل صورة المنتج الآن:**")
+    bot.send_message(message.chat.id, "📸 **1. أرسل صورة المنتج:**")
     bot.register_next_step_handler(message, get_photo)
 
 def get_photo(message):
     if message.content_type != 'photo':
-        bot.send_message(message.chat.id, "⚠️ يرجى إرسال صورة!")
+        bot.send_message(message.chat.id, "❌ خطأ! أرسل صورة.")
         return bot.register_next_step_handler(message, get_photo)
     user_data[message.chat.id]['photo'] = message.photo[-1].file_id
     bot.send_message(message.chat.id, "✏️ **2. أرسل اسم المنتج ووصفه:**")
@@ -62,65 +65,35 @@ def get_photo(message):
 
 def get_name(message):
     user_data[message.chat.id]['name'] = message.text
-    bot.send_message(message.chat.id, "💰 **3. أرسل السعر (مثلاً: 150):**")
+    bot.send_message(message.chat.id, "💰 **3. أرسل السعر (بالجنيه):**")
     bot.register_next_step_handler(message, get_price)
 
 def get_price(message):
     user_data[message.chat.id]['price'] = message.text
-    bot.send_message(message.chat.id, "📏 **4. أرسل المقاسات (مثلاً: 60, 70, 80):**")
+    bot.send_message(message.chat.id, "📏 **4. أرسل المقاسات (افصل بينها بفاصلة ,):**")
     bot.register_next_step_handler(message, get_sizes)
 
 def get_sizes(message):
     user_data[message.chat.id]['sizes'] = message.text
-    
-    # معاينة المنتج قبل النشر
     data = user_data[message.chat.id]
-    preview = (f"🔍 **معاينة المنتج:**\n\n"
-               f"📦 الاسم: {data['name']}\n"
-               f"💰 السعر: {data['price']} ج.م\n"
-               f"📏 المقاسات: {data['sizes']}")
     
-    markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.add(types.InlineKeyboardButton("✅ تأكيد ونشر", callback_data="confirm_pub"),
-               types.InlineKeyboardButton("❌ إلغاء", callback_data="cancel_pub"))
-    
-    bot.send_photo(message.chat.id, data['photo'], caption=preview, reply_markup=markup)
+    # معاينة قبل النشر
+    preview = f"📦 المنتج: {data['name']}\n💰 السعر: {data['price']} ج.م\n📏 المقاسات: {data['sizes']}"
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("✅ تأكيد ونشر في القناة", callback_data="publish_now"))
+    bot.send_photo(message.chat.id, data['photo'], caption=f"🔍 **معاينة:**\n{preview}", reply_markup=markup, parse_mode="Markdown")
 
-# --- 4. معالجة النشر وأزرار المقاسات للعملاء ---
+# --- 5. معالجة النشر واستلام طلبات العملاء ---
 @bot.callback_query_handler(func=lambda call: True)
-def handle_callbacks(call):
-    chat_id = call.message.chat.id
-    if call.data == "confirm_pub":
-        data = user_data.get(chat_id)
-        if not data: return
-        
-        # حفظ في قاعدة البيانات
-        conn = sqlite3.connect('store.db')
-        c = conn.cursor()
-        c.execute("INSERT INTO products (name, price, photo, sizes) VALUES (?, ?, ?, ?)",
-                  (data['name'], data['price'], data['photo'], data['sizes']))
-        conn.commit()
-        conn.close()
-
-        # إنشاء أزرار المقاسات التفاعلية للقناة
-        markup = types.InlineKeyboardMarkup(row_width=3)
-        sizes = data['sizes'].split(',')
-        btns = [types.InlineKeyboardButton(f"🛒 مقاس {s.strip()}", callback_data=f"buy_{s.strip()}_{data['name']}") for s in sizes]
-        markup.add(*btns)
-        markup.add(types.InlineKeyboardButton("💬 استفسار", url="https://t.me/RamySamir2026"),
-                   types.InlineKeyboardButton("🏪 المعرض", url="https://ramisamir2006-hash.github.io"))
-        
-        caption = f"🆕 **{data['name']}**\n\n💰 السعر: {data['price']} ج.م\n📦 اطلبي الآن باختيار المقاس 👇"
-        bot.send_photo(CHANNEL_ID, data['photo'], caption=caption, reply_markup=markup, parse_mode="Markdown")
-        bot.edit_message_caption("🚀 تم النشر في القناة بنجاح!", chat_id, call.message.message_id)
-
-    elif call.data.startswith("buy_"):
-        info = call.data.split("_")
-        order_msg = f"🔔 **طلب جديد!**\n👤 العميل: @{call.from_user.username}\n🛍️ المنتج: {info[2]}\n📏 المقاس: {info[1]}"
-        bot.send_message(STAFF_GROUP_ID, order_msg)
-        bot.answer_callback_query(call.id, "✅ تم إرسال طلبك لفريق العمل.")
-
-# --- تشغيل البوت والسيرفر ---
-if __name__ == "__main__":
-    threading.Thread(target=lambda: bot.infinity_polling(), daemon=True).start()
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
+def callback_handler(call):
+    if call.data == "publish_now":
+        data = user_data.get(call.message.chat.id)
+        if data:
+            # إنشاء أزرار المقاسات للقناة
+            markup = types.InlineKeyboardMarkup(row_width=2)
+            for s in data['sizes'].split(','):
+                markup.add(types.InlineKeyboardButton(f"🛒 طلب مقاس {s.strip()}", callback_data=f"order_{s.strip()}_{data['name']}"))
+            
+            caption = f"✨ **{data['name']}**\n💰 السعر: {data['price']} ج.م\n\nاطلبي الآن عبر الضغط على المقاس 👇"
+            bot.send_
+    
