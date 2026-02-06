@@ -1,74 +1,90 @@
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
 const path = require('path');
+const axios = require('axios');
 
 const app = express();
 app.use(express.json());
 
-// --- إعدادات الربط النهائية والمؤكدة ---
-const TOKEN = "8395659007:AAHaIQBJD_dTd6Np46fNeNS-WHoAbLNK0rk"; // توكن البوت الخاص بك
-const ADMIN_ID = 7020070481; // معرف رامي سمير (المدير العام)
-const CHANNEL_ID = "-1003223634521"; // معرف القناة الصحيح
+// --- إعداداتك الخاصة (تأكد من صحتها) ---
+const TOKEN = "8395659007:AAHaIQBJD_dTd6Np46fNeNS-WHoAbLNK0rk";
+const ADMIN_ID = 7020070481;
+const CHANNEL_ID = "-1003223634521"; // معرف قناتك
+
+// إعدادات Airtable (الموقع الخارجي للتقارير)
+const AIRTABLE_API_KEY = 'YOUR_AIRTABLE_TOKEN'; 
+const AIRTABLE_BASE_ID = 'YOUR_BASE_ID';
 
 const bot = new TelegramBot(TOKEN, { polling: true });
-
-// خدمة ملفات الواجهة من مجلد public
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 1. استقبال بيانات النشر من لوحة التحكم (HTML) إلى القناة
-app.post('/publish', (req, res) => {
-    const { name, price, wholesale, image, cat, size } = req.body;
-    
-    const caption = `✨ **موديل جديد وصل في رامي سمير Gold** ✨\n\n` +
-                  `💍 **القطعة:** ${name}\n` +
-                  `🏷️ **الخامة:** ${size || 'استانلس ستيل'}\n` +
-                  `📂 **القسم:** ${cat}\n\n` +
-                  `💰 **سعر القطاعي:** ${price} ج.م\n` +
-                  `📦 **سعر الجملة:** ${wholesale} ج.م\n\n` +
-                  `🛍️ كاراس وأبو سيفين للاستيراد`;
+// --- أزرار التحكم والعمليات ---
 
-    bot.sendPhoto(CHANNEL_ID, image, {
-        caption: caption,
-        parse_mode: 'Markdown',
-        reply_markup: {
-            inline_keyboard: [
-                [{ text: "🛒 اطلب عبر واتساب", url: "https://wa.me/20123456789" }],
-                [{ text: "💬 مراسلة رامي سمير", url: "https://t.me/RamiSamir" }]
-            ]
-        }
-    }).then(() => {
+// 1. نشر منتج جديد من لوحة التحكم للقناة مباشرة
+app.post('/publish', async (req, res) => {
+    const { name, price, wholesale, image, cat } = req.body;
+    const caption = `💍 **موديل جديد من كاراس وأبو سيفين** ✨\n\n` +
+                  `📦 **القطعة:** ${name}\n` +
+                  `📂 **القسم:** ${cat}\n` +
+                  `💰 **قطاعي:** ${price} ج.م\n` +
+                  `🏬 **جملة:** ${wholesale} ج.م\n\n` +
+                  `🛒 اطلب الآن عبر السلة في المتجر!`;
+
+    try {
+        await bot.sendPhoto(CHANNEL_ID, image, {
+            caption: caption,
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: [[{ text: "💬 مراسلة رامي سمير", url: "https://t.me/RamiSamir" }]]
+            }
+        });
         res.status(200).send({ success: true });
-    }).catch((err) => {
-        console.error("خطأ في النشر:", err);
-        res.status(500).send({ error: "فشل النشر في القناة" });
-    });
+    } catch (e) { res.status(500).send({ error: e.message }); }
 });
 
-// 2. استقبال طلبات السلة من العملاء وإرسالها لرامي (خاص)
-app.post('/submit-order', (req, res) => {
-    const { name, phone, items, total } = req.body;
+// 2. استقبال الطلبات وتسجيلها خارجياً (Airtable) وإرسال تقرير لرامي
+app.post('/submit-order', async (req, res) => {
+    const { name, phone, items, total, customerType } = req.body;
     
-    let orderMsg = `🚨 **طلب شراء جديد (كاراس وأبو سيفين)**\n\n👤 العميل: ${name}\n📞 هاتف: ${phone}\n\nالمنتجات:\n`;
-    items.forEach((i, index) => orderMsg += `${index + 1}- ${i.title} (${i.price} ج.م)\n`);
-    orderMsg += `\n💰 الإجمالي: ${total}`;
+    // تطبيق خصم الجملة (مثلاً 10% تلقائياً)
+    let finalTotal = customerType === 'wholesale' ? total * 0.90 : total;
 
-    bot.sendMessage(ADMIN_ID, orderMsg, {
+    // تسجيل في Airtable للتقارير اليومية
+    try {
+        await axios.post(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/Orders`, {
+            fields: {
+                "العميل": name,
+                "الهاتف": phone,
+                "النوع": customerType,
+                "إجمالي الطلب": finalTotal,
+                "التاريخ": new Date().toISOString()
+            }
+        }, { headers: { Authorization: `Bearer ${AIRTABLE_API_KEY}` } });
+    } catch (e) { console.log("خطأ في تسجيل التقرير الخارجي"); }
+
+    // إرسال رسالة خاصة لرامي بالطلب
+    let orderList = items.map(i => `- ${i.name}`).join('\n');
+    let adminMsg = `🚨 **طلب جديد وصل!**\n\n👤 العميل: ${name}\n📞 هاتف: ${phone}\n🏷️ الفئة: ${customerType}\n🛍️ المنتجات:\n${orderList}\n\n💰 الإجمالي النهائي: ${finalTotal} ج.م`;
+
+    bot.sendMessage(ADMIN_ID, adminMsg, {
+        reply_markup: { inline_keyboard: [[{ text: "📞 اتصل بالعميل", url: `tel:${phone}` }]] }
+    });
+
+    res.json({ success: true, finalTotal });
+});
+
+// --- أوامر البوت داخل تليجرام ---
+bot.onText(/\/start/, (msg) => {
+    bot.sendMessage(msg.chat.id, "أهلاً بك في بوت إدارة متجر كاراس وأبو سيفين 💍", {
         reply_markup: {
-            inline_keyboard: [[{ text: "📞 اتصال بالعميل", url: `tel:${phone}` }]]
+            keyboard: [
+                [{ text: "📊 تقرير المبيعات" }, { text: "🛍️ فتح المتجر" }],
+                [{ text: "⚙️ الإعدادات" }]
+            ], resize_keyboard: true
         }
     });
-    res.sendStatus(200);
 });
 
-// 3. أوامر البوت الأساسية
-bot.onText(/\/start/, (msg) => {
-    const welcomeMsg = msg.from.id === ADMIN_ID ? 
-        "أهلاً يا رامي! يمكنك التحكم في المتجر ونشر المنتجات عبر لوحة الويب." :
-        "مرحباً بك في متجر رامي سمير Gold ✨\nتصفح المنتجات واطلب عبر السلة الملحقة.";
-    
-    bot.sendMessage(msg.chat.id, welcomeMsg);
-});
-
-// تشغيل السيرفر على المنفذ 8000 ليتوافق مع Koyeb
 const PORT = process.env.PORT || 8000;
-app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
+app.listen(PORT, () => console.log(`السيرفر يعمل بنجاح على منفذ ${PORT}`));
+            
