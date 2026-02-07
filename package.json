@@ -1,4 +1,20 @@
 {
+  "name": "ramy-smart-store",
+  "version": "2.0.0",
+  "description": "نظام رامي سمير الذكي لإدارة متجر الذهب",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "node-telegram-bot-api": "^0.64.0",
+    "airtable": "^0.12.2",
+    "express": "^4.18.2",
+    "body-parser": "^1.20.2"
+  }
+}
+
+{
   "name": "my-store",
   "version": "1.0.0",
   "description": "متجر رامي سمير للذهب الصيني",
