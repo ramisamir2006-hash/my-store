@@ -1,98 +1,63 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة تحكم متجر رامي سمير</title>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; padding: 20px; direction: rtl; }
-        .admin-panel { background: white; max-width: 700px; margin: auto; padding: 30px; border-radius: 25px; box-shadow: 0 15px 35px rgba(0,0,0,0.15); border: 2px solid #d4af37; }
-        h2 { color: #c2185b; text-align: center; margin-bottom: 25px; font-size: 28px; }
-        label { font-weight: bold; color: #444; display: block; margin-top: 10px; }
-        input, select, textarea { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #ccc; border-radius: 12px; box-sizing: border-box; font-size: 16px; transition: 0.3s; }
-        input:focus { border-color: #d4af37; outline: none; box-shadow: 0 0 8px rgba(212, 175, 55, 0.3); }
-        .btn-group { display: flex; gap: 15px; margin-top: 20px; flex-wrap: wrap; }
-        button { flex: 1; padding: 16px; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 17px; transition: 0.3s; min-width: 200px; }
-        .publish-btn { background: linear-gradient(45deg, #d4af37, #b8860b); color: white; }
-        .publish-btn:hover { background: linear-gradient(45deg, #b8860b, #d4af37); transform: translateY(-2px); }
-        .add-img-btn { background: #37474f; color: white; width: 100%; margin-top: 5px; }
-        .badge { background: #d4af37; color: white; padding: 5px 12px; border-radius: 20px; font-size: 12px; float: left; }
-    </style>
-</head>
-<body>
+const TelegramBot = require('node-telegram-bot-api');
+const Airtable = require('airtable');
+const express = require('express');
+const path = require('path');
+const bodyParser = require('body-parser');
 
-<div class="admin-panel">
-    <span class="badge">نظام رامي سمير الذكي v2.0</span>
-    <h2>💍 إدارة متجر رامي سمير للذهب</h2>
+// --- إعداد السيرفر لضمان عمل الخدمة بنجاح ---
+const app = express();
+app.use(bodyParser.json());
+app.use(express.static('public'));
+
+// --- بياناتك الشخصية المدمجة ---
+const token = '8395659007:AAHaIQBJD_dTd6Np46fNeNS-WHoAbLNK0rk';
+const channelId = '-1003223634521';
+const channelUrl = 'https://t.me/RamySamir2026Gold';
+
+const bot = new TelegramBot(token, { polling: true });
+
+// ربط Airtable (تأكد من وجود المتغيرات في إعدادات Koyeb)
+const base = new Airtable({ 
+    apiKey: process.env.AIRTABLE_API_KEY 
+}).base(process.env.BASE_ID);
+
+// توجيه السيرفر لفتح لوحة التحكم
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// استقبال طلبات النشر من لوحة التحكم (index.html)
+app.post('/publish', async (req, res) => {
+    const data = req.body;
     
-    <label>🎯 معلومات المنتج</label>
-    <input type="text" id="pName" placeholder="اسم المنتج">
-    
-    <select id="pCat">
-        <option value="" disabled selected>اختر القسم...</option>
-        <option>خواتم</option><option>سلاسل</option><option>انسيالات</option>
-        <option>أساور</option><option>حلق</option><option>غوايش</option>
-    </select>
+    const caption = `💍 *موديل جديد من متجر رامي* 💍\n\n` +
+                    `📝 *اسم المنتج:* ${data.name}\n` +
+                    `🏷️ *القسم:* ${data.category}\n` +
+                    `📏 *المقاسات:* ${data.size}\n\n` +
+                    `💰 *السعر قطاعي:* ${data.price} ج.م\n` +
+                    `🏬 *السعر جملة:* ${data.wholesale} ج.م\n` +
+                    `🎁 *الخصم:* ${data.discount}%\n\n` +
+                    `✅ [تصفح المعرض من هنا](${channelUrl})\n` +
+                    `📞 للطلب تواصل مع المدير التنفيذي: @RamySamir2026`;
 
-    <div class="btn-group">
-        <input type="number" id="pPrice" placeholder="السعر قطاعي">
-        <input type="number" id="pWholesale" placeholder="السعر جملة">
-    </div>
-
-    <div class="btn-group">
-        <input type="text" id="pSize" placeholder="المقاسات">
-        <input type="number" id="pDiscount" placeholder="الخصم %">
-    </div>
-    
-    <label>📸 صور الموديل</label>
-    <div id="images-container">
-        <input type="text" class="img-input" placeholder="رابط الصورة المباشر">
-    </div>
-    <button class="add-img-btn" onclick="addImageField()">➕ إضافة صورة أخرى</button>
-    
-    <hr>
-    
-    <div class="btn-group">
-        <button class="publish-btn" onclick="sendToBot()">✨ نشر فوري في القناة</button>
-    </div>
-</div>
-
-<script>
-    function addImageField() {
-        const input = document.createElement('input');
-        input.type = "text";
-        input.className = 'img-input';
-        input.placeholder = "رابط صورة إضافية";
-        document.getElementById('images-container').appendChild(input);
-    }
-
-    async function sendToBot() {
-        const images = Array.from(document.querySelectorAll('.img-input')).map(i => i.value).filter(v => v);
-        const data = {
-            name: document.getElementById('pName').value,
-            category: document.getElementById('pCat').value,
-            price: document.getElementById('pPrice').value,
-            wholesale: document.getElementById('pWholesale').value,
-            size: document.getElementById('pSize').value,
-            discount: document.getElementById('pDiscount').value,
-            images: images
-        };
-
-        if (!data.name || images.length === 0) {
-            alert("يرجى ملء الاسم وصورة واحدة على الأقل!");
-            return;
+    try {
+        if (data.images.length > 1) {
+            const mediaGroup = data.images.map((url, index) => ({
+                type: 'photo',
+                media: url,
+                caption: index === 0 ? caption : '',
+                parse_mode: 'Markdown'
+            }));
+            await bot.sendMediaGroup(channelId, mediaGroup);
+        } else {
+            await bot.sendPhoto(channelId, data.images[0], { caption, parse_mode: 'Markdown' });
         }
-
-        const res = await fetch('/publish', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-
-        const result = await res.json();
-        if (result.success) alert("✅ تم النشر بنجاح!");
-        else alert("❌ خطأ: " + result.error);
+        res.json({ success: true });
+    } catch (error) {
+        res.json({ success: false, error: error.message });
     }
-</script>
-</body>
-</html>
+});
+
+app.listen(process.env.PORT || 8000, () => {
+    console.log('سيرفر رامي يعمل على المنفذ 8000');
+});
