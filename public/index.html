@@ -2,40 +2,76 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>متجر كاراس وأبو سيفين</title>
+    <title>لوحة تحكم رامي سمير</title>
     <style>
-        body { font-family: Arial; text-align: center; background: #f4f4f4; direction: rtl; }
-        .card { background: white; padding: 20px; margin: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        input, select, button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
-        button { background: #28a745; color: white; border: none; font-weight: bold; cursor: pointer; }
+        body { font-family: 'Segoe UI', sans-serif; background: #eceff1; padding: 20px; }
+        .admin-panel { background: white; max-width: 600px; margin: auto; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        h2 { color: #c2185b; text-align: center; }
+        input, select, textarea { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; }
+        .btn-group { display: flex; gap: 10px; }
+        button { flex: 1; padding: 15px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 16px; }
+        .publish-btn { background: #d4af37; color: white; }
+        .add-img-btn { background: #37474f; color: white; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h2>💎 تسجيل طلب جديد</h2>
-        <input type="text" id="name" placeholder="اسم العميل">
-        <input type="tel" id="phone" placeholder="رقم الهاتف">
-        <select id="type">
-            <option value="قطاعي">قطاعي</option>
-            <option value="جملة">جملة</option>
-        </select>
-        <button onclick="sendOrder()">إرسال الطلب للسيستم ✅</button>
+
+<div class="admin-panel">
+    <h2>🚀 إضافة منتج جديد للقناة</h2>
+    
+    <input type="text" id="pName" placeholder="اسم المنتج (مثال: انسيال شويكار)">
+    
+    <select id="pCat">
+        <option>خواتم</option><option>سلاسل</option><option>انسيالات</option>
+        <option>أساور</option><option>حلق</option><option>غوايش</option>
+        <option>طقم</option><option>شويكار</option><option>برسن</option><option>خلخال</option>
+    </select>
+
+    <div class="btn-group">
+        <input type="number" id="pPrice" placeholder="السعر قطاعي">
+        <input type="number" id="pWholesale" placeholder="السعر جملة">
     </div>
 
-    <script>
-        async function sendOrder() {
-            const data = {
-                name: document.getElementById('name').value,
-                phone: document.getElementById('phone').value,
-                type: document.getElementById('type').value
-            };
-            const response = await fetch('/submit-order', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(data)
-            });
-            if(response.ok) alert("تم تسجيل الطلب في الجدول الخارجي بنجاح!");
-        }
-    </script>
+    <input type="text" id="pSize" placeholder="المقاسات المتوفرة (مثال: 18, 20, 22)">
+    <input type="number" id="pDiscount" placeholder="نسبة الخصم (اختياري %)">
+    
+    <div id="images-container">
+        <input type="text" class="img-input" placeholder="رابط صورة المنتج 1">
+    </div>
+    <button class="add-img-btn" onclick="addImageField()">➕ إضافة صورة أخرى</button>
+    
+    <hr>
+    <button class="publish-btn" onclick="publish()">✨ نشر في قناة التليجرام الآن</button>
+</div>
+
+<script>
+    function addImageField() {
+        const input = document.createElement('input');
+        input.className = 'img-input';
+        input.placeholder = "رابط صورة إضافية";
+        document.getElementById('images-container').appendChild(input);
+    }
+
+    async function publish() {
+        const images = Array.from(document.querySelectorAll('.img-input')).map(i => i.value).filter(v => v);
+        const data = {
+            name: document.getElementById('pName').value,
+            price: document.getElementById('pPrice').value,
+            wholesale: document.getElementById('pWholesale').value,
+            cat: document.getElementById('pCat').value,
+            size: document.getElementById('pSize').value,
+            discount: document.getElementById('pDiscount').value,
+            images: images
+        };
+
+        const res = await fetch('/publish', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        
+        if(res.ok) alert("✅ تم توليد الوصف التسويقي والنشر في القناة بنجاح!");
+    }
+</script>
 </body>
 </html>
