@@ -1,7 +1,7 @@
 {
-  "name": "ramy-smart-store",
-  "version": "2.1.0",
-  "description": "نظام رامي سمير المستقر",
+  "name": "ramy-store",
+  "version": "1.0.0",
+  "description": "نظام متجر رامي المستقر",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
