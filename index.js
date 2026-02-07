@@ -4,48 +4,44 @@ const express = require('express');
 const path = require('path');
 const bodyParser = require('body-parser');
 
-// --- إعداد السيرفر ---
+// --- إعداد السيرفر لضمان عمل الخدمة (إصلاح Build Error) ---
 const app = express();
 app.use(bodyParser.json());
-app.use(express.static('public')); // تأكد من وضع ملف HTML داخل مجلد اسمه public
+app.use(express.static('public'));
 
-// --- بيانات الربط الخاصة بك ---
-const token = '8395659007:AAHaIQBJD_dTd6Np46fNeNS-WHoAbLNK0rk';
-const channelId = '-1003223634521';
+// --- بياناتك الشخصية المدمجة ---
+const token = '8395659007:AAHaIQBJD_dTd6Np46fNeNS-WHoAbLNK0rk'; // توكن المدير التنفيذي
+const channelId = '-1003223634521'; // معرف القناة الخاص بك
 const channelUrl = 'https://t.me/RamySamir2026Gold';
 
 const bot = new TelegramBot(token, { polling: true });
 
-// ربط Airtable (تأكد من إضافة المتغيرات في إعدادات Koyeb)
+// ربط Airtable (تأكد من وجود المتغيرات AIRTABLE_API_KEY و BASE_ID في Koyeb)
 const base = new Airtable({ 
     apiKey: process.env.AIRTABLE_API_KEY 
 }).base(process.env.BASE_ID);
 
-// --- تشغيل السيرفر لإصلاح مشكلة Unhealthy ---
+// فتح لوحة التحكم عند زيارة رابط السيرفر
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.listen(process.env.PORT || 8000, () => {
-    console.log('سيرفر متجر رامي يعمل على المنفذ 8000');
-});
-
-// --- استقبال طلبات النشر من لوحة التحكم ---
+// استقبال طلبات النشر من لوحة التحكم (HTML)
 app.post('/publish', async (req, res) => {
     const data = req.body;
     
-    const caption = `💍 *موديل جديد من متجر رامي* 💍\n\n` +
-                    `📝 *اسم المنتج:* ${data.name}\n` +
+    const caption = `💍 *موديل جديد: متجر رامي سمير* 💍\n\n` +
+                    `📝 *الصنف:* ${data.name}\n` +
                     `🏷️ *القسم:* ${data.category}\n` +
                     `📏 *المقاسات:* ${data.size}\n\n` +
-                    `💰 *السعر قطاعي:* ${data.price} ج.م\n` +
-                    `🏬 *السعر جملة:* ${data.wholesale} ج.م\n` +
+                    `💰 *قطاعي:* ${data.price} ج.م\n` +
+                    `🏬 *جملة:* ${data.wholesale} ج.م\n` +
                     `🎁 *الخصم:* ${data.discount}%\n\n` +
-                    `✅ [اضغط هنا للدخول للمعرض](${channelUrl})\n` +
-                    `📞 للطلب تواصل مع المدير: @RamySamir2026`;
+                    `✅ [تصفح المعرض الكامل من هنا](${channelUrl})\n` +
+                    `📞 للطلب والاستفسار: @RamySamir2026`;
 
     try {
-        if (data.images.length > 1) {
+        if (data.images && data.images.length > 1) {
             const mediaGroup = data.images.map((url, index) => ({
                 type: 'photo',
                 media: url,
@@ -53,7 +49,7 @@ app.post('/publish', async (req, res) => {
                 parse_mode: 'Markdown'
             }));
             await bot.sendMediaGroup(channelId, mediaGroup);
-        } else {
+        } else if (data.images && data.images.length === 1) {
             await bot.sendPhoto(channelId, data.images[0], { caption, parse_mode: 'Markdown' });
         }
         res.json({ success: true });
@@ -62,7 +58,6 @@ app.post('/publish', async (req, res) => {
     }
 });
 
-// --- أوامر البوت الأساسية ---
-bot.onText(/\/start/, (msg) => {
-    bot.sendMessage(msg.chat.id, `مرحباً بك في نظام رامي سمير الذكي ✨\nيمكنك استخدام لوحة التحكم لإضافة المنتجات.`);
+app.listen(process.env.PORT || 8000, () => {
+    console.log('نظام رامي سمير يعمل بنجاح');
 });
