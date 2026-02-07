@@ -1,10 +1,10 @@
 {
   "name": "ramy-store",
   "version": "1.0.0",
-  "description": "Smart Store System",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "build": "npm install"
   },
   "dependencies": {
     "node-telegram-bot-api": "^0.64.0",
