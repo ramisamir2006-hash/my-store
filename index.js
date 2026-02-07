@@ -1,68 +1,73 @@
 const TelegramBot = require('node-telegram-bot-api');
+const Airtable = require('airtable');
 const express = require('express');
-const cron = require('node-cron'); // مكتبة الجدولة الزمنية
 
-const TOKEN = "8395659007:AAHaIQBJD_dTd6Np46fNeNS-WHoAbLNK0rk";
-const CHANNEL_ID = "-1003223634521";
-const bot = new TelegramBot(TOKEN, { polling: true });
+// إعدادات السيرفر لـ Render
 const app = express();
-app.use(express.json());
+const port = process.env.PORT || 8000;
+app.get('/', (req, res) => res.send('بوت متجر رامي يعمل بنجاح!'));
+app.listen(port, () => console.log(`السيرفر يعمل على منفذ ${port}`));
 
-// مخزن مؤقت للمنتجات المجدولة للحملات الإعلانية
-let adQueue = [];
+// ربط Airtable
+const base = new Airtable({apiKey: process.env.AIRTABLE_API_KEY}).base(process.env.BASE_ID);
+const TABLE_NAME = "مبيعات رامي"; // نفس الاسم في صورتك
 
-// دالة توليد الوصف التسويقي التلقائي (الاحترافي)
-function generateAutoDescription(category, name) {
-    const ads = {
-        "شويكار": `✨ موديل شويكار الراقي.. قطعة فنية تمنحك إطلالة الأميرات. ${name} بجودة استيراد لا تضاهى.`,
-        "برسن": `💎 تألقي بلمسة البرسن الفريدة.. ${name} مصمم خصيصاً لمن تعشق التميز والاختلاف.`,
-        "خلخال": `👣 رقة وأنوثة في كل خطوة مع خلخال ${name}. الجمال يبدأ من التفاصيل البسيطة.`,
-        "انسيال": `💫 معصمك يستحق هذا الدلال! انسيال ${name} بلمعته الخاصة التي تزيدك جاذبية.`,
-        "طقم": `👑 الفخامة الكاملة في طقم ${name}. المجموعة المثالية للمناسبات السعيدة والهدايا الراقية.`
+// ربط البوت
+const bot = new TelegramBot(process.env.BOT_TOKEN, {polling: true});
+
+// 1. القائمة الرئيسية (أزرار التحكم في البوت)
+bot.onText(/\/start/, (msg) => {
+    const chatId = msg.chat.id;
+    const opts = {
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: '🛍️ فتح المتجر (المعرض)', url: 'https://t.me/your_channel_link' }],
+                [{ text: '🛒 إضافة طلب جديد', callback_data: 'add_order' }],
+                [{ text: '📢 التحكم بالقناة', callback_data: 'channel_control' }],
+                [{ text: '❓ استفسار / مساعدة', callback_data: 'help' }]
+            ]
+        }
     };
-    return ads[category] || `قطعة ${name} المميزة.. جودة عالية وتصميم عصري يناسب ذوقك الرفيع. ✨`;
-}
+    bot.sendMessage(chatId, `أهلاً بك يا ${msg.from.first_name} في لوحة تحكم متجر رامي.`, opts);
+});
 
-// نظام الجدولة: نشر منتج من الطابور كل ساعتين تلقائياً
-cron.schedule('0 */2 * * *', async () => {
-    if (adQueue.length > 0) {
-        const product = adQueue.shift(); // سحب أول منتج في القائمة
-        await publishToTelegram(product);
-        console.log("تم نشر حملة إعلانية مجدولة بنجاح");
+// 2. معالجة ضغطات الأزرار
+bot.on('callback_query', async (callbackQuery) => {
+    const msg = callbackQuery.message;
+    const data = callbackQuery.data;
+
+    if (data === 'add_order') {
+        bot.sendMessage(msg.chat.id, "من فضلك أرسل اسم العميل ورقم الهاتف بهذا الشكل:\nالاسم - الرقم - النوع(جملة/قطاعي)");
+    }
+
+    if (data === 'channel_control') {
+        bot.sendMessage(msg.chat.id, "إعدادات القناة:\n1. نشر منتج جديد\n2. إرسال عرض خاص\n(يمكنك ربط هذه الأزرار بوظائف النشر التلقائي)");
     }
 });
 
-async function publishToTelegram(p) {
-    const finalPrice = p.discount ? p.price - (p.price * (p.discount/100)) : p.price;
-    const desc = generateAutoDescription(p.cat, p.name);
-    
-    const caption = `💍 **إصدار جديد من متجر كاراس وأبو سيفين** ✨\n\n` +
-                  `📦 **الموديل:** ${p.name}\n` +
-                  `📂 **القسم:** ${p.cat}\n` +
-                  `📏 **المقاس:** ${p.size || 'متوفر جميع المقاسات'}\n` +
-                  `📝 **الوصف:** ${desc}\n\n` +
-                  `💰 **السعر:** ${finalPrice} ج.م ${p.discount ? `(خصم ${p.discount}%)` : ''}\n` +
-                  `🏬 **جملة:** ${p.wholesale} ج.م\n\n` +
-                  `🛒 للطلب والاستفسار: @RamiSamir\n` +
-                  `🚚 شحن سريع لكافة المحافظات!`;
+// 3. استقبال البيانات وحفظها في جدول "مبيعات رامي"
+bot.on('message', async (msg) => {
+    const text = msg.text;
+    if (text && text.includes('-')) {
+        const details = text.split('-');
+        const name = details[0].trim();
+        const phone = details[1].trim();
+        const type = details[2] ? details[2].trim() : "قطاعي";
 
-    if (p.images.length > 1) {
-        const media = p.images.map((img, i) => ({ type: 'photo', media: img, caption: i === 0 ? caption : '', parse_mode: 'Markdown' }));
-        await bot.sendMediaGroup(CHANNEL_ID, media);
-    } else {
-        await bot.sendPhoto(CHANNEL_ID, p.images[0], { caption, parse_mode: 'Markdown' });
+        try {
+            await base(TABLE_NAME).create([
+                {
+                    "fields": {
+                        "العميل": name,
+                        "الهاتف": phone,
+                        "النوع": type
+                    }
+                }
+            ]);
+            bot.sendMessage(msg.chat.id, `✅ تم تسجيل البيانات بنجاح في جدول "مبيعات رامي":\n👤 العميل: ${name}\n📞 الهاتف: ${phone}\n🏷️ النوع: ${type}`);
+        } catch (error) {
+            console.error(error);
+            bot.sendMessage(msg.chat.id, "❌ حدث خطأ أثناء الحفظ. تأكد من إعدادات الـ API و Base ID.");
+        }
     }
-}
-
-// أزرار التحكم: نشر فوري أو إضافة للجدولة
-app.post('/publish-now', async (req, res) => {
-    await publishToTelegram(req.body);
-    res.send({ success: true });
 });
-
-app.post('/add-to-ads', (req, res) => {
-    adQueue.push(req.body);
-    res.send({ success: true, queueLength: adQueue.length });
-});
-
-app.listen(8000, () => console.log("السيرفر يعمل..."));
