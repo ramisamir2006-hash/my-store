@@ -1,90 +1,67 @@
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
-const path = require('path');
 const axios = require('axios');
+const path = require('path');
 
 const app = express();
 app.use(express.json());
 
-// --- إعداداتك الخاصة (تأكد من صحتها) ---
 const TOKEN = "8395659007:AAHaIQBJD_dTd6Np46fNeNS-WHoAbLNK0rk";
 const ADMIN_ID = 7020070481;
-const CHANNEL_ID = "-1003223634521"; // معرف قناتك
+const CHANNEL_ID = "-1003223634521";
 
-// إعدادات Airtable (الموقع الخارجي للتقارير)
+// مفاتيح Airtable التي جهزتها أنت في الصور
 const AIRTABLE_API_KEY = 'YOUR_AIRTABLE_TOKEN'; 
 const AIRTABLE_BASE_ID = 'YOUR_BASE_ID';
 
 const bot = new TelegramBot(TOKEN, { polling: true });
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- أزرار التحكم والعمليات ---
+// دالة توليد الوصف التسويقي التلقائي لكل قسم
+function generateDescription(category, name) {
+    const templates = {
+        "خواتم": `✨ تألقي بسحر الأناقة مع خاتم ${name}. تصميم يجمع بين الفخامة والرقي ليناسب كل لحظاتك السعيدة. 💍`,
+        "سلاسل": `📿 لمسة جمالية تلتف حول عنقك.. سلسلة ${name} المستوردة، بريق لا ينطفئ وتصميم يخطف الأنظار.`,
+        "انسيال": `💫 معصمك يستحق هذا الدلال! انسيال ${name} بلمعته الخاصة التي تزيدك جاذبية في كل حركة.`,
+        "أساور": `🌟 أساور ${name}.. عنوان الفخامة والجمال. قطعة فريدة تعكس ذوقك الرفيع وتكمل إطلالتك.`,
+        "حلق": `👂 ابهري الجميع مع حلق ${name}. بريق استثنائي يضيف لمسة من السحر على وجهك الجميل.`,
+        "غوايش": `👑 غوايش ${name} الأصلية.. متانة وفخامة تدوم طويلاً. زينة المرأة العربية الأصيلة.`,
+        "طقم": `💎 طقم ${name} المتكامل.. لأناقة ملكية لا مثيل لها. المجموعة التي تحلم بها كل امرأة.`,
+        "خلخال": `👣 خلخال ${name}.. رقة وأنوثة في كل خطوة. تصميم عصري يناسب إطلالات الصيف المبهجة.`
+    };
+    return templates[category] || `قطعة ${name} الفريدة من متجرنا، جودة استيراد وسعر لا يقاوم. ✨`;
+}
 
-// 1. نشر منتج جديد من لوحة التحكم للقناة مباشرة
+// 🚀 زر التحكم: نشر المنتج للقناة مع كافة التفاصيل
 app.post('/publish', async (req, res) => {
-    const { name, price, wholesale, image, cat } = req.body;
+    const { name, price, wholesale, images, cat, size, discount } = req.body;
+    
+    const finalPrice = discount ? price - (price * (discount/100)) : price;
+    const autoDesc = generateDescription(cat, name);
+
     const caption = `💍 **موديل جديد من كاراس وأبو سيفين** ✨\n\n` +
-                  `📦 **القطعة:** ${name}\n` +
+                  `📦 **الصنف:** ${name}\n` +
                   `📂 **القسم:** ${cat}\n` +
-                  `💰 **قطاعي:** ${price} ج.م\n` +
-                  `🏬 **جملة:** ${wholesale} ج.م\n\n` +
-                  `🛒 اطلب الآن عبر السلة في المتجر!`;
+                  `📏 **المقاسات:** ${size || 'متوفر كافة المقاسات'}\n` +
+                  `📝 **الوصف:** ${autoDesc}\n\n` +
+                  `💰 **السعر القطاعي:** ${finalPrice} ج.م ${discount ? `(خصم ${discount}%)` : ''}\n` +
+                  `🏬 **سعر الجملة:** ${wholesale} ج.م\n\n` +
+                  `📣 **حملة خاصة:** شحن مجاني لأول 5 طلبات! 🚚\n\n` +
+                  `🛒 اطلب الآن عبر الخاص: @RamiSamir`;
 
     try {
-        await bot.sendPhoto(CHANNEL_ID, image, {
-            caption: caption,
-            parse_mode: 'Markdown',
-            reply_markup: {
-                inline_keyboard: [[{ text: "💬 مراسلة رامي سمير", url: "https://t.me/RamiSamir" }]]
-            }
-        });
+        // إرسال أكثر من صورة كمجموعة (Album)
+        const mediaGroup = images.map((img, index) => ({
+            type: 'photo',
+            media: img,
+            caption: index === 0 ? caption : '',
+            parse_mode: 'Markdown'
+        }));
+
+        await bot.sendMediaGroup(CHANNEL_ID, mediaGroup);
         res.status(200).send({ success: true });
     } catch (e) { res.status(500).send({ error: e.message }); }
 });
 
-// 2. استقبال الطلبات وتسجيلها خارجياً (Airtable) وإرسال تقرير لرامي
-app.post('/submit-order', async (req, res) => {
-    const { name, phone, items, total, customerType } = req.body;
-    
-    // تطبيق خصم الجملة (مثلاً 10% تلقائياً)
-    let finalTotal = customerType === 'wholesale' ? total * 0.90 : total;
-
-    // تسجيل في Airtable للتقارير اليومية
-    try {
-        await axios.post(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/Orders`, {
-            fields: {
-                "العميل": name,
-                "الهاتف": phone,
-                "النوع": customerType,
-                "إجمالي الطلب": finalTotal,
-                "التاريخ": new Date().toISOString()
-            }
-        }, { headers: { Authorization: `Bearer ${AIRTABLE_API_KEY}` } });
-    } catch (e) { console.log("خطأ في تسجيل التقرير الخارجي"); }
-
-    // إرسال رسالة خاصة لرامي بالطلب
-    let orderList = items.map(i => `- ${i.name}`).join('\n');
-    let adminMsg = `🚨 **طلب جديد وصل!**\n\n👤 العميل: ${name}\n📞 هاتف: ${phone}\n🏷️ الفئة: ${customerType}\n🛍️ المنتجات:\n${orderList}\n\n💰 الإجمالي النهائي: ${finalTotal} ج.م`;
-
-    bot.sendMessage(ADMIN_ID, adminMsg, {
-        reply_markup: { inline_keyboard: [[{ text: "📞 اتصل بالعميل", url: `tel:${phone}` }]] }
-    });
-
-    res.json({ success: true, finalTotal });
-});
-
-// --- أوامر البوت داخل تليجرام ---
-bot.onText(/\/start/, (msg) => {
-    bot.sendMessage(msg.chat.id, "أهلاً بك في بوت إدارة متجر كاراس وأبو سيفين 💍", {
-        reply_markup: {
-            keyboard: [
-                [{ text: "📊 تقرير المبيعات" }, { text: "🛍️ فتح المتجر" }],
-                [{ text: "⚙️ الإعدادات" }]
-            ], resize_keyboard: true
-        }
-    });
-});
-
 const PORT = process.env.PORT || 8000;
-app.listen(PORT, () => console.log(`السيرفر يعمل بنجاح على منفذ ${PORT}`));
-            
+app.listen(PORT, () => console.log(`السيرفر يعمل بنجاح` ));
