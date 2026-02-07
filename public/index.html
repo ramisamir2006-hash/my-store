@@ -1,87 +1,6 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة تحكم متجر كاراس وأبو سيفين</title>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; padding: 20px; direction: rtl; }
-        .admin-panel { background: white; max-width: 700px; margin: auto; padding: 30px; border-radius: 25px; box-shadow: 0 15px 35px rgba(0,0,0,0.15); border: 2px solid #d4af37; }
-        h2 { color: #c2185b; text-align: center; margin-bottom: 25px; font-size: 28px; }
-        label { font-weight: bold; color: #444; display: block; margin-top: 10px; }
-        input, select, textarea { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #ccc; border-radius: 12px; box-sizing: border-box; font-size: 16px; transition: 0.3s; }
-        input:focus { border-color: #d4af37; outline: none; box-shadow: 0 0 8px rgba(212, 175, 55, 0.3); }
-        .btn-group { display: flex; gap: 15px; margin-top: 20px; flex-wrap: wrap; }
-        button { flex: 1; padding: 16px; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 17px; transition: 0.3s; min-width: 200px; }
-        .publish-btn { background: linear-gradient(45deg, #d4af37, #b8860b); color: white; }
-        .publish-btn:hover { background: linear-gradient(45deg, #b8860b, #d4af37); transform: translateY(-2px); }
-        .ad-btn { background: linear-gradient(45deg, #c2185b, #880e4f); color: white; }
-        .ad-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(194, 24, 91, 0.4); }
-        .add-img-btn { background: #37474f; color: white; width: 100%; margin-top: 5px; }
-        .img-input { border-right: 5px solid #37474f; }
-        hr { border: 0; border-top: 1px solid #eee; margin: 25px 0; }
-        .badge { background: #d4af37; color: white; padding: 5px 12px; border-radius: 20px; font-size: 12px; float: left; }
-    </style>
-</head>
-<body>
-
-<div class="admin-panel">
-    <span class="badge">نظام رامي سمير الذكي v2.0</span>
-    <h2>💍 إدارة متجر كاراس وأبو سيفين</h2>
-    
-    <label>🎯 معلومات المنتج الأساسية</label>
-    <input type="text" id="pName" placeholder="اسم المنتج (مثال: انسيال شويكار ملكي)">
-    
-    <select id="pCat">
-        <option value="" disabled selected>اختر قسم المنتج...</option>
-        <option>خواتم</option><option>سلاسل</option><option>انسيالات</option>
-        <option>أساور</option><option>حلق</option><option>غوايش</option>
-        <option>طقم</option><option>شويكار</option><option>برسن</option>
-        <option>خلخال</option><option>كوليه</option><option>برينسيس</option>
-    </select>
-
-    <div class="btn-group">
-        <div style="flex:1">
-            <label>💰 سعر القطاعي</label>
-            <input type="number" id="pPrice" placeholder="0.00">
-        </div>
-        <div style="flex:1">
-            <label>🏬 سعر الجملة</label>
-            <input type="number" id="pWholesale" placeholder="0.00">
-        </div>
-    </div>
-
-    <div class="btn-group">
-        <div style="flex:1">
-            <label>📏 المقاسات</label>
-            <input type="text" id="pSize" placeholder="مثال: 18, 19, 20">
-        </div>
-        <div style="flex:1">
-            <label>🎁 الخصم (%)</label>
-            <input type="number" id="pDiscount" placeholder="مثال: 10">
-        </div>
-    </div>
-    
-    <label>📸 صور الموديل (يمكنك إضافة أكثر من صورة)</label>
-    <div id="images-container">
-        <input type="text" class="img-input" placeholder="رابط الصورة الأولى (رابط مباشر)">
-    </div>
-    <button class="add-img-btn" onclick="addImageField()">➕ إضافة رابط صورة إضافية</button>
-    
-    <hr>
-    
-    <div class="btn-group">
-        <button class="publish-btn" onclick="handleAction('/publish-now')">✨ نشر فوري في القناة</button>
-        <button class="ad-btn" onclick="handleAction('/add-to-ads')">📢 إضافة للحملة الإعلانية</button>
-    </div>
-    <p style="text-align: center; color: #777; font-size: 13px; margin-top: 15px;">
-        * عند الإضافة للحملة، سيقوم البوت بنشر المنتج تلقائياً مع وصف تسويقي جذاب كل ساعتين.
-    </p>
-</div>
-
-<script>
     function addImageField() {
         const input = document.createElement('input');
+        input.type = "text";
         input.className = 'img-input';
         input.placeholder = "رابط صورة إضافية";
         document.getElementById('images-container').appendChild(input);
@@ -90,5 +9,38 @@
     async function handleAction(endpoint) {
         const images = Array.from(document.querySelectorAll('.img-input')).map(i => i.value).filter(v => v);
         
-        if (images.
+        // تجميع بيانات المنتج من الحقول
+        const productData = {
+            name: document.getElementById('pName').value,
+            category: document.getElementById('pCat').value,
+            price: document.getElementById('pPrice').value,
+            wholesale: document.getElementById('pWholesale').value,
+            size: document.getElementById('pSize').value,
+            discount: document.getElementById('pDiscount').value,
+            images: images
+        };
+
+        if (!productData.name || images.length === 0) {
+            alert("يرجى إدخال اسم المنتج وصورة واحدة على الأقل!");
+            return;
+        }
+
+        // إرسال البيانات إلى البوت (السيرفر)
+        try {
+            const response = await fetch('/publish', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(productData)
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                alert("✅ تم النشر بنجاح في قناة رامي سمير!");
+            } else {
+                alert("❌ فشل النشر: " + result.error);
+            }
+        } catch (err) {
+            alert("❌ حدث خطأ في الاتصال بالسيرفر!");
+        }
+    }
     
