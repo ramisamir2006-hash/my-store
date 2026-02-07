@@ -1,67 +1,68 @@
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
-const axios = require('axios');
-const path = require('path');
+const cron = require('node-cron'); // مكتبة الجدولة الزمنية
 
+const TOKEN = "8395659007:AAHaIQBJD_dTd6Np46fNeNS-WHoAbLNK0rk";
+const CHANNEL_ID = "-1003223634521";
+const bot = new TelegramBot(TOKEN, { polling: true });
 const app = express();
 app.use(express.json());
 
-const TOKEN = "8395659007:AAHaIQBJD_dTd6Np46fNeNS-WHoAbLNK0rk";
-const ADMIN_ID = 7020070481;
-const CHANNEL_ID = "-1003223634521";
+// مخزن مؤقت للمنتجات المجدولة للحملات الإعلانية
+let adQueue = [];
 
-// مفاتيح Airtable التي جهزتها أنت في الصور
-const AIRTABLE_API_KEY = 'YOUR_AIRTABLE_TOKEN'; 
-const AIRTABLE_BASE_ID = 'YOUR_BASE_ID';
-
-const bot = new TelegramBot(TOKEN, { polling: true });
-app.use(express.static(path.join(__dirname, 'public')));
-
-// دالة توليد الوصف التسويقي التلقائي لكل قسم
-function generateDescription(category, name) {
-    const templates = {
-        "خواتم": `✨ تألقي بسحر الأناقة مع خاتم ${name}. تصميم يجمع بين الفخامة والرقي ليناسب كل لحظاتك السعيدة. 💍`,
-        "سلاسل": `📿 لمسة جمالية تلتف حول عنقك.. سلسلة ${name} المستوردة، بريق لا ينطفئ وتصميم يخطف الأنظار.`,
-        "انسيال": `💫 معصمك يستحق هذا الدلال! انسيال ${name} بلمعته الخاصة التي تزيدك جاذبية في كل حركة.`,
-        "أساور": `🌟 أساور ${name}.. عنوان الفخامة والجمال. قطعة فريدة تعكس ذوقك الرفيع وتكمل إطلالتك.`,
-        "حلق": `👂 ابهري الجميع مع حلق ${name}. بريق استثنائي يضيف لمسة من السحر على وجهك الجميل.`,
-        "غوايش": `👑 غوايش ${name} الأصلية.. متانة وفخامة تدوم طويلاً. زينة المرأة العربية الأصيلة.`,
-        "طقم": `💎 طقم ${name} المتكامل.. لأناقة ملكية لا مثيل لها. المجموعة التي تحلم بها كل امرأة.`,
-        "خلخال": `👣 خلخال ${name}.. رقة وأنوثة في كل خطوة. تصميم عصري يناسب إطلالات الصيف المبهجة.`
+// دالة توليد الوصف التسويقي التلقائي (الاحترافي)
+function generateAutoDescription(category, name) {
+    const ads = {
+        "شويكار": `✨ موديل شويكار الراقي.. قطعة فنية تمنحك إطلالة الأميرات. ${name} بجودة استيراد لا تضاهى.`,
+        "برسن": `💎 تألقي بلمسة البرسن الفريدة.. ${name} مصمم خصيصاً لمن تعشق التميز والاختلاف.`,
+        "خلخال": `👣 رقة وأنوثة في كل خطوة مع خلخال ${name}. الجمال يبدأ من التفاصيل البسيطة.`,
+        "انسيال": `💫 معصمك يستحق هذا الدلال! انسيال ${name} بلمعته الخاصة التي تزيدك جاذبية.`,
+        "طقم": `👑 الفخامة الكاملة في طقم ${name}. المجموعة المثالية للمناسبات السعيدة والهدايا الراقية.`
     };
-    return templates[category] || `قطعة ${name} الفريدة من متجرنا، جودة استيراد وسعر لا يقاوم. ✨`;
+    return ads[category] || `قطعة ${name} المميزة.. جودة عالية وتصميم عصري يناسب ذوقك الرفيع. ✨`;
 }
 
-// 🚀 زر التحكم: نشر المنتج للقناة مع كافة التفاصيل
-app.post('/publish', async (req, res) => {
-    const { name, price, wholesale, images, cat, size, discount } = req.body;
-    
-    const finalPrice = discount ? price - (price * (discount/100)) : price;
-    const autoDesc = generateDescription(cat, name);
-
-    const caption = `💍 **موديل جديد من كاراس وأبو سيفين** ✨\n\n` +
-                  `📦 **الصنف:** ${name}\n` +
-                  `📂 **القسم:** ${cat}\n` +
-                  `📏 **المقاسات:** ${size || 'متوفر كافة المقاسات'}\n` +
-                  `📝 **الوصف:** ${autoDesc}\n\n` +
-                  `💰 **السعر القطاعي:** ${finalPrice} ج.م ${discount ? `(خصم ${discount}%)` : ''}\n` +
-                  `🏬 **سعر الجملة:** ${wholesale} ج.م\n\n` +
-                  `📣 **حملة خاصة:** شحن مجاني لأول 5 طلبات! 🚚\n\n` +
-                  `🛒 اطلب الآن عبر الخاص: @RamiSamir`;
-
-    try {
-        // إرسال أكثر من صورة كمجموعة (Album)
-        const mediaGroup = images.map((img, index) => ({
-            type: 'photo',
-            media: img,
-            caption: index === 0 ? caption : '',
-            parse_mode: 'Markdown'
-        }));
-
-        await bot.sendMediaGroup(CHANNEL_ID, mediaGroup);
-        res.status(200).send({ success: true });
-    } catch (e) { res.status(500).send({ error: e.message }); }
+// نظام الجدولة: نشر منتج من الطابور كل ساعتين تلقائياً
+cron.schedule('0 */2 * * *', async () => {
+    if (adQueue.length > 0) {
+        const product = adQueue.shift(); // سحب أول منتج في القائمة
+        await publishToTelegram(product);
+        console.log("تم نشر حملة إعلانية مجدولة بنجاح");
+    }
 });
 
-const PORT = process.env.PORT || 8000;
-app.listen(PORT, () => console.log(`السيرفر يعمل بنجاح` ));
+async function publishToTelegram(p) {
+    const finalPrice = p.discount ? p.price - (p.price * (p.discount/100)) : p.price;
+    const desc = generateAutoDescription(p.cat, p.name);
+    
+    const caption = `💍 **إصدار جديد من متجر كاراس وأبو سيفين** ✨\n\n` +
+                  `📦 **الموديل:** ${p.name}\n` +
+                  `📂 **القسم:** ${p.cat}\n` +
+                  `📏 **المقاس:** ${p.size || 'متوفر جميع المقاسات'}\n` +
+                  `📝 **الوصف:** ${desc}\n\n` +
+                  `💰 **السعر:** ${finalPrice} ج.م ${p.discount ? `(خصم ${p.discount}%)` : ''}\n` +
+                  `🏬 **جملة:** ${p.wholesale} ج.م\n\n` +
+                  `🛒 للطلب والاستفسار: @RamiSamir\n` +
+                  `🚚 شحن سريع لكافة المحافظات!`;
+
+    if (p.images.length > 1) {
+        const media = p.images.map((img, i) => ({ type: 'photo', media: img, caption: i === 0 ? caption : '', parse_mode: 'Markdown' }));
+        await bot.sendMediaGroup(CHANNEL_ID, media);
+    } else {
+        await bot.sendPhoto(CHANNEL_ID, p.images[0], { caption, parse_mode: 'Markdown' });
+    }
+}
+
+// أزرار التحكم: نشر فوري أو إضافة للجدولة
+app.post('/publish-now', async (req, res) => {
+    await publishToTelegram(req.body);
+    res.send({ success: true });
+});
+
+app.post('/add-to-ads', (req, res) => {
+    adQueue.push(req.body);
+    res.send({ success: true, queueLength: adQueue.length });
+});
+
+app.listen(8000, () => console.log("السيرفر يعمل..."));
