@@ -1,7 +1,6 @@
 {
-  "name": "ramistorebot",
+  "name": "my-store",
   "version": "1.0.0",
-  "description": "Jewelry Store Bot for Rami",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
