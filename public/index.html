@@ -2,134 +2,61 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>متجر كاراس وأبو سيفين</title>
+    <title>متجر رامي سمير الذهب</title>
     <style>
-        :root { --p: #c2185b; --bg: #f8f9fa; }
-        body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 15px; }
-        .card { background: white; padding: 15px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .prod-card { background: white; border-radius: 10px; text-align: center; padding: 10px; border: 1px solid #ddd; }
-        .prod-card img { width: 100%; height: 120px; border-radius: 8px; object-fit: cover; }
-        button { background: var(--p); color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 5px; }
-        .del-btn { background: #dc3545; width: auto; padding: 5px 10px; }
-        input, select { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
-        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
-        .tab { flex: 1; text-align: center; padding: 10px; background: #eee; border-radius: 10px; cursor: pointer; }
-        .active-tab { background: var(--p); color: white; }
+        body { font-family: 'Arial', sans-serif; background-color: #f4f4f4; text-align: center; }
+        .header { background: #d4af37; color: white; padding: 20px; font-size: 24px; border-bottom: 5px solid #b8860b; }
+        .container { padding: 20px; }
+        .product-card { background: white; border-radius: 10px; padding: 15px; margin: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); display: inline-block; width: 250px; }
+        .btn-order { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; width: 100%; }
+        .form-group { margin-bottom: 15px; text-align: right; }
+        input, select { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc; }
     </style>
 </head>
 <body>
+    <div class="header">✨ متجر كاراس وأبو سيفين للاستيراد ✨</div>
+    
+    <div class="container" id="main-content">
+        <div id="products-list"></div>
 
-    <h2 style="text-align: center; color: var(--p);">💎 كاراس وأبو سيفين للاستيراد</h2>
-
-    <div class="tabs">
-        <div class="tab active-tab" onclick="show('store')">🛍️ المتجر</div>
-        <div class="tab" onclick="show('cart')">🛒 السلة</div>
-        <div class="tab" onclick="show('admin')">⚙️ الإدارة</div>
-    </div>
-
-    <div id="store-page">
-        <div class="grid" id="product-display"></div>
-    </div>
-
-    <div id="cart-page" style="display:none;">
-        <div class="card">
-            <h3>🛒 سلة المشتريات</h3>
-            <div id="cart-items"></div>
-            <hr>
-            <select id="cust-type">
-                <option value="retail">قطاعي (السعر العادي)</option>
-                <option value="wholesale">جملة (خصم خاص للتجار)</option>
-            </select>
-            <input type="text" id="cust-name" placeholder="اسمك الكريم">
-            <input type="tel" id="cust-phone" placeholder="رقم الموبايل">
-            <button onclick="sendOrder()">✅ إرسال الطلب للسيستم</button>
-        </div>
-    </div>
-
-    <div id="admin-page" style="display:none;">
-        <div class="card">
-            <h3>➕ إضافة منتج للقناة والمتجر</h3>
-            <input type="text" id="n" placeholder="اسم المنتج">
-            <input type="number" id="p" placeholder="سعر القطاعي">
-            <input type="number" id="w" placeholder="سعر الجملة">
-            <input type="text" id="i" placeholder="رابط الصورة">
-            <select id="c">
-                <option>سلاسل</option>
-                <option>خواتم</option>
-                <option>انسيالات</option>
-            </select>
-            <button onclick="publishProduct()">🚀 نشر الآن</button>
+        <div class="product-card" style="width: 90%; max-width: 500px;">
+            <h3>📝 استمارة طلب جديد</h3>
+            <div class="form-group">
+                <label>الاسم بالكامل:</label>
+                <input type="text" id="name" placeholder="أدخل اسمك">
+            </div>
+            <div class="form-group">
+                <label>رقم الهاتف:</label>
+                <input type="tel" id="phone" placeholder="أدخل رقمك">
+            </div>
+            <div class="form-group">
+                <label>فئة السعر:</label>
+                <select id="price-type">
+                    <option value="retail">قطاعي (سعر العميل)</option>
+                    <option value="wholesale">جملة (سعر التاجر)</option>
+                </select>
+            </div>
+            <button class="btn-order" onclick="submitOrder()">إرسال الطلب وحفظ البيانات</button>
         </div>
     </div>
 
     <script>
-        let cart = [];
-        let prods = JSON.parse(localStorage.getItem('prods')) || [];
-
-        function show(page) {
-            document.getElementById('store-page').style.display = page === 'store' ? 'block' : 'none';
-            document.getElementById('cart-page').style.display = page === 'cart' ? 'block' : 'none';
-            document.getElementById('admin-page').style.display = page === 'admin' ? 'block' : 'none';
-            if(page === 'store') renderStore();
-            if(page === 'cart') renderCart();
-        }
-
-        function publishProduct() {
-            const data = { name:document.getElementById('n').value, price:document.getElementById('p').value, wholesale:document.getElementById('w').value, image:document.getElementById('i').value, cat:document.getElementById('c').value };
-            fetch('/publish', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) });
-            prods.push(data);
-            localStorage.setItem('prods', JSON.stringify(prods));
-            alert("تم النشر بنجاح!");
-            show('store');
-        }
-
-        function renderStore() {
-            document.getElementById('product-display').innerHTML = prods.map((p, idx) => `
-                <div class="prod-card">
-                    <img src="${p.image}">
-                    <h4>${p.name}</h4>
-                    <p>${p.price} ج.م</p>
-                    <button onclick="addToCart(${idx})">➕ للسلة</button>
-                </div>
-            `).join('');
-        }
-
-        function addToCart(idx) {
-            cart.push(prods[idx]);
-            alert("تمت الإضافة ✅");
-        }
-
-        function renderCart() {
-            document.getElementById('cart-items').innerHTML = cart.map((item, idx) => `
-                <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                    <span>${item.name}</span>
-                    <button class="del-btn" onclick="removeFromCart(${idx})">❌</button>
-                </div>
-            `).join('');
-        }
-
-        function removeFromCart(idx) {
-            cart.splice(idx, 1);
-            renderCart();
-        }
-
-        async function sendOrder() {
-            const order = {
-                name: document.getElementById('cust-name').value,
-                phone: document.getElementById('cust-phone').value,
-                customerType: document.getElementById('cust-type').value,
-                items: cart,
-                total: cart.reduce((s, i) => s + parseFloat(i.price), 0)
+        async function submitOrder() {
+            const data = {
+                name: document.getElementById('name').value,
+                phone: document.getElementById('phone').value,
+                type: document.getElementById('price-type').value,
+                date: new Date().toLocaleString('ar-EG')
             };
-            await fetch('/submit-order', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(order) });
-            alert("تم إرسال طلبك وتسجيله في التقارير الخارجية! شكراً لتعاملك معنا.");
-            cart = [];
-            show('store');
+            
+            // الربط مع السيرفر ونظام التقارير الخارجي
+            await fetch('/submit-order', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+            alert('تم استلام طلبك وتسجيله في كشف التقارير اليومي بنجاح!');
         }
-
-        renderStore();
     </script>
 </body>
 </html>
