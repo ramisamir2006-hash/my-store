@@ -1552,3 +1552,10 @@ if __name__ == '__main__':
     except Exception as e:
         logger.error(f"Error starting Flask application: {e}")
         exit(1)
+if __name__ == '__main__':
+    print("🚀 Bot is starting on Koyeb...")
+    # حذف أي ويب هوك قديم لضمان عمل البوت
+    bot.remove_webhook()
+    # تشغيل استقبال الرسائل
+    bot.infinity_polling()
+    
