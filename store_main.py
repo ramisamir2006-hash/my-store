@@ -1,3 +1,56 @@
+import os
+import threading
+from flask import Flask
+import telebot
+from telebot import types
+
+# --- إعدادات البوتات (التوكن الجديد) ---
+# البوت الأساسي (المتجر)
+PRIMARY_BOT_TOKEN = '8557404137:AAHB30k_Hzj9Chh_-MEQpa3NhCpQaZfJtSM'
+# يمكنك إضافة توكن البوت الثاني هنا إذا أردت تشغيلهما معاً
+# SECONDARY_BOT_TOKEN = 'توكن_البوت_الآخر'
+
+ADMIN_ID = 7020070481  # الآيدي الخاص بك كمسؤول
+
+bot = telebot.TeleBot(PRIMARY_BOT_TOKEN, threaded=False)
+
+# --- إعداد سيرفر وهمي لمنصة Koyeb ---
+flask_app = Flask(__name__)
+
+@flask_app.route('/')
+def health_check():
+    return "Bot is Running Healthy! ✅"
+
+def run_web_server():
+    # الحصول على المنفذ من Koyeb أو استخدام 8080 افتراضياً
+    port = int(os.environ.get("PORT", 8080))
+    flask_app.run(host='0.0.0.0', port=port)
+
+# --- أوامر البوت ---
+@bot.message_handler(commands=['start'])
+def start(message):
+    user_id = message.from_user.id
+    if user_id == ADMIN_ID:
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        markup.add("إدارة المنتجات 📦", "عرض الطلبات 🛍")
+        markup.add("إرسال إشعار للكل 📣")
+        bot.send_message(user_id, "أهلاً بك يا سيد رامي في لوحة تحكم البوت المسؤول 👑", reply_markup=markup)
+    else:
+        bot.send_message(user_id, "مرحباً بك في متجرنا! استخدم القائمة لتصفح المنتجات.")
+
+# --- تشغيل النظام ---
+if __name__ == '__main__':
+    # 1. تشغيل سيرفر الويب في الخلفية (مهم جداً لـ Koyeb)
+    threading.Thread(target=run_web_server, daemon=True).start()
+    
+    print("🚀 Bot is starting on Koyeb...")
+    
+    # 2. التأكد من إزالة الويب هوك القديم
+    bot.remove_webhook()
+    
+    # 3. تشغيل البوت بنظام Polling
+    bot.infinity_polling()
+    
 # --- بيانات الربط الخاصة بـ RAMY SAMIR ---
 BOT_TOKEN = '8395659007:AAHaIQBJD_dTd6Np46fNeNS-WHoAbLNK0rk'
 ADMIN_ID = 7020070481        # آيدي المالك (أنت)
