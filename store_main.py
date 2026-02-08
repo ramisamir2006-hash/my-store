@@ -1559,3 +1559,17 @@ if __name__ == '__main__':
     # تشغيل استقبال الرسائل
     bot.infinity_polling()
     
+import threading
+
+# دالة وهمية لتشغيل Flask ومنع المنصة من إغلاق البوت
+def run_flask():
+    # المنصة تبحث عن المنفذ 8080 افتراضياً
+    flask_app.run(host='0.0.0.0', port=8080)
+
+if __name__ == '__main__':
+    # تشغيل Flask في خيط منفصل (Thread)
+    threading.Thread(target=run_flask).start()
+    
+    print("🚀 Bot is starting on Web Service mode...")
+    bot.remove_webhook()
+    bot.infinity_polling()
