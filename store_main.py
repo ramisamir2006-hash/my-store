@@ -1573,3 +1573,21 @@ if __name__ == '__main__':
     print("🚀 Bot is starting on Web Service mode...")
     bot.remove_webhook()
     bot.infinity_polling()
+
+import os
+from threading import Thread
+
+# تشغيل سيرفر وهمي لإرضاء Koyeb
+def awake():
+    from flask import Flask
+    app = Flask(__name__)
+    @app.route('/')
+    def index(): return "Bot is Running!"
+    # Koyeb يستخدم المنفذ 8080 افتراضياً
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
+
+if __name__ == '__main__':
+    Thread(target=awake).start() # تشغيل السيرفر في الخلفية
+    print("🚀 Bot is starting...")
+    bot.infinity_polling() # تشغيل البوت
+    
