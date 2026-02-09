@@ -1,5 +1,40 @@
 import json
 import os
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters
+
+# 1. ضع التوكن الخاص بك هنا
+TOKEN = "8557404137:AAHB30k_Hzj9Chh_-MEQpa3NhCpQaZfJtSM"
+
+# 2. إعدادات الملفات (لضمان عدم حدوث خطأ عند التشغيل)
+def init_db():
+    files = ["produk.json", "saldo.json", "pending_deposit.json", "riwayat.json", "statistik.json"]
+    for f in files:
+        if not os.path.exists(f):
+            with open(f, "w") as file: json.dump({}, file)
+
+# --- (هنا تضع دوال البوت التي أرسلتها أنت: handle_list_produk, send_main_menu... إلخ) ---
+
+# 3. الجزء المسؤول عن ربط التوكن وتشغيل البوت (ضعه في نهاية الملف)
+def main():
+    init_db() # إنشاء الملفات تلقائياً
+    
+    # بناء البوت باستخدام التوكن الخاص بك
+    app = Application.builder().token(TOKEN).build()
+
+    # ربط الأوامر (Handlers)
+    app.add_handler(CommandHandler("start", send_main_menu_safe))
+    app.add_handler(CallbackQueryHandler(handle_list_produk, pattern="list_produk"))
+    app.add_handler(CallbackQueryHandler(handle_deposit, pattern="deposit"))
+    
+    # يمكنك إضافة باقي الـ Handlers هنا بنفس الطريقة
+
+    print("🚀 البوت يعمل الآن على توكن @RamiSamir_bot...")
+    app.run_polling()
+
+if __name__ == "__main__":
+    main()
+import json
+import os
 import threading
 from flask import Flask
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -8,7 +43,7 @@ from datetime import datetime
 
 # --- إعدادات متجر رامي (RAMI STORE) ---
 OWNER_ID = 7020070481
-BOT_TOKEN = "8557404137:AAHB30k_Hzj9Chh_-MEQpa3NhCpQaZfJtSM"
+BOT_TOKEN = "8395659007:AAHaIQBJD_dTd6Np46fNeNS-WHoAbLNK0rk"
 MY_CHANNEL = "@RamySamir2026Gold"
 SUPPORT_USER = "@RamiSamir2024"
 STORE_NAME_AR = "متجر رامي للمجوهرات 🛍️"
@@ -141,3 +176,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
