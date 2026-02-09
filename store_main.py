@@ -1,16 +1,9 @@
 import json
 import os
 import threading
-import logging
 from flask import Flask
-from telegram import (
-    Update, InlineKeyboardButton, InlineKeyboardMarkup,
-    InputFile, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
-)
-from telegram.ext import (
-    Application, CommandHandler, MessageHandler,
-    CallbackQueryHandler, filters, CallbackContext
-)
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, CallbackContext
 from datetime import datetime
 
 # --- إعدادات متجر رامي (RAMI STORE) ---
@@ -18,20 +11,21 @@ OWNER_ID = 7020070481
 BOT_TOKEN = "8557404137:AAHB30k_Hzj9Chh_-MEQpa3NhCpQaZfJtSM"
 MY_CHANNEL = "@RamySamir2026Gold"
 SUPPORT_USER = "@RamiSamir2024"
-STORE_NAME = "متجر رامي 🛍️"
-CURRENCY = "ج.م" # الجنيه المصري
+STORE_NAME_AR = "متجر رامي للمجوهرات 🛍️"
+STORE_NAME_EN = "Rami Jewelry Store 🛍️"
+CURRENCY_AR = "ج.م"
+CURRENCY_EN = "EGP"
 
-# ملفات البيانات JSON
+# ملفات البيانات
+user_lang_file = "user_lang.json"
 produk_file = "produk.json"
 saldo_file = "saldo.json"
-deposit_file = "pending_deposit.json"
-riwayat_file = "riwayat.json"
 statistik_file = "statistik.json"
 
-# إعداد Flask لضمان استقرار البوت على Koyeb
+# إعداد Flask لـ Koyeb
 flask_app = Flask(__name__)
 @flask_app.route('/')
-def health_check(): return "البوت يعمل بكفاءة! ✅"
+def home(): return "Bot is running! ✅"
 
 def run_flask():
     port = int(os.environ.get("PORT", 8080))
@@ -39,80 +33,110 @@ def run_flask():
 
 # --- دالات معالجة البيانات ---
 def load_json(file):
-    if not os.path.exists(file):
-        return [] if file == "pending_deposit.json" else {}
+    if not os.path.exists(file): return {}
     with open(file, "r", encoding="utf-8") as f:
         content = f.read().strip()
-        if not content: return [] if file == "pending_deposit.json" else {}
-        return json.loads(content)
+        return json.loads(content) if content else {}
 
 def save_json(file, data):
     with open(file, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
-# --- القائمة الرئيسية ---
-async def send_main_menu(context, chat_id, user):
-    saldo = load_json(saldo_file)
-    statistik = load_json(statistik_file)
-    s = saldo.get(str(user.id), 0)
-    uid_str = str(user.id)
-    jumlah = statistik.get(uid_str, {}).get("jumlah", 0)
-    total = statistik.get(uid_str, {}).get("nominal", 0)
+# --- نظام اللغات ---
+def get_lang(uid):
+    langs = load_json(user_lang_file)
+    return langs.get(str(uid), "ar") # الافتراضي عربي
 
-    text = (
-        f"👋 مرحباً بك في *{STORE_NAME}*!\n\n"
-        f"👤 العميل: {user.full_name}\n"
-        f"🆔 الآيدي: `{user.id}`\n"
-        f"💰 رصيدك: {s:,} {CURRENCY}\n"
-        f"📦 مشترياتك: {jumlah}\n"
-        f"📊 إجمالي مدفوعاتك: {total:,} {CURRENCY}"
-    )
+# --- القائمة الرئيسية (ثنائية اللغة) ---
+async def send_main_menu(update, context):
+    uid = update.effective_user.id
+    lang = get_lang(uid)
+    saldo = load_json(saldo_file).get(str(uid), 0)
+    
+    if lang == "ar":
+        text = (
+            f"👋 مرحباً بك في *{STORE_NAME_AR}*\n\n"
+            f"💰 رصيدك: {saldo:,} {CURRENCY_AR}\n"
+            f"📢 القناة: {MY_CHANNEL}"
+        )
+        buttons = [
+            [InlineKeyboardButton("📋 قائمة المنتجات", callback_data="list_produk"),
+             InlineKeyboardButton("🛒 المخزون", callback_data="cek_stok")],
+            [InlineKeyboardButton("💳 شحن رصيد", callback_data="deposit"),
+             InlineKeyboardButton("🌐 Change Language", callback_data="set_lang")],
+            [InlineKeyboardButton("ℹ️ معلومات", callback_data="info_bot")]
+        ]
+    else:
+        text = (
+            f"👋 Welcome to *{STORE_NAME_EN}*\n\n"
+            f"💰 Balance: {saldo:,} {CURRENCY_EN}\n"
+            f"📢 Channel: {MY_CHANNEL}"
+        )
+        buttons = [
+            [InlineKeyboardButton("📋 Product List", callback_data="list_produk"),
+             InlineKeyboardButton("🛒 Stock", callback_data="cek_stok")],
+            [InlineKeyboardButton("💳 Top Up", callback_data="deposit"),
+             InlineKeyboardButton("🌐 تغيير اللغة", callback_data="set_lang")],
+            [InlineKeyboardButton("ℹ️ Information", callback_data="info_bot")]
+        ]
+    
+    if uid == OWNER_ID:
+        admin_text = "🛠 لوحة التحكم" if lang == "ar" else "🛠 Admin Panel"
+        buttons.append([InlineKeyboardButton(admin_text, callback_data="admin_panel")])
 
+    if update.callback_query:
+        await update.callback_query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode="Markdown")
+    else:
+        await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode="Markdown")
+
+# --- تغيير اللغة ---
+async def set_lang_menu(update, context):
+    query = update.callback_query
     keyboard = [
-        [InlineKeyboardButton("📋 قائمة المنتجات", callback_data="list_produk"),
-         InlineKeyboardButton("🛒 المخزون", callback_data="cek_stok")],
-        [InlineKeyboardButton("💳 شحن رصيد", callback_data="deposit")],
-        [InlineKeyboardButton("📢 قناة المتجر", url=f"https://t.me/{MY_CHANNEL.replace('@','')}")],
-        [InlineKeyboardButton("ℹ️ معلومات البوت", callback_data="info_bot")],
+        [InlineKeyboardButton("العربية 🇪🇬", callback_data="lang_ar"),
+         InlineKeyboardButton("English 🇺🇸", callback_data="lang_en")]
     ]
-    if user.id == OWNER_ID:
-        keyboard.append([InlineKeyboardButton("🛠 لوحة تحكم الإدارة", callback_data="admin_panel")])
+    await query.edit_message_text("الرجاء اختيار اللغة / Please choose language:", reply_markup=InlineKeyboardMarkup(keyboard))
 
-    await context.bot.send_message(
-        chat_id=chat_id, text=text,
-        reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown"
-    )
+async def change_lang(update, context):
+    query = update.callback_query
+    uid = query.from_user.id
+    new_lang = "ar" if query.data == "lang_ar" else "en"
+    
+    langs = load_json(user_lang_file)
+    langs[str(uid)] = new_lang
+    save_json(user_lang_file, langs)
+    
+    await query.answer("تم تغيير اللغة بنجاح!" if new_lang == "ar" else "Language changed!")
+    await send_main_menu(update, context)
 
 # --- معلومات البوت ---
-async def handle_info_bot(update, context):
+async def handle_info(update, context):
     query = update.callback_query
-    text = (
-        f"📖 *معلومات {STORE_NAME}*\n"
-        "╽─────────────────────────────╮\n"
-        f"├ 🧠 *الاسم*: `{STORE_NAME}`\n"
-        f"├ 👨‍💻 *المالك*: {SUPPORT_USER}\n"
-        "├ 🛒 *الوظيفة*: بيع حسابات رقمية تلقائياً\n"
-        "├ ⚙️ *الميزات*: تسليم فوري، دفع بالجنيه المصري\n"
-        f"├ 🗓️ *تحديث*: {datetime.now().year}\n"
-        "╰─────────────────────────────╯\n\n"
-        f"💬 *للدعم الفني:* {SUPPORT_USER}"
-    )
-    keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 العودة للقائمة", callback_data="back_to_produk")]])
-    await query.edit_message_text(text, parse_mode="Markdown", reply_markup=keyboard)
+    lang = get_lang(query.from_user.id)
+    
+    if lang == "ar":
+        text = f"متجر رامي متخصص في أرقى أنواع المجوهرات.\nللتواصل: {SUPPORT_USER}"
+        back = "🔙 العودة"
+    else:
+        text = f"Rami Store specializes in fine jewelry.\nContact: {SUPPORT_USER}"
+        back = "🔙 Back"
+        
+    keyboard = [[InlineKeyboardButton(back, callback_data="back_home")]]
+    await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
 
-async def start(update: Update, context: CallbackContext):
-    await send_main_menu(context, update.effective_chat.id, update.effective_user)
-
-# --- تشغيل النظام ---
+# --- تشغيل البوت ---
 def main():
     threading.Thread(target=run_flask, daemon=True).start()
     app = Application.builder().token(BOT_TOKEN).build()
     
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CallbackQueryHandler(handle_info_bot, pattern="info_bot"))
-    # ملاحظة: يمكنك إضافة باقي معالجات الأزرار (CallbackHandlers) هنا بنفس الطريقة
+    app.add_handler(CommandHandler("start", send_main_menu))
+    app.add_handler(CallbackQueryHandler(set_lang_menu, pattern="set_lang"))
+    app.add_handler(CallbackQueryHandler(change_lang, pattern="lang_ar|lang_en"))
+    app.add_handler(CallbackQueryHandler(handle_info, pattern="info_bot"))
+    app.add_handler(CallbackQueryHandler(send_main_menu, pattern="back_home"))
     
-    print(f"🚀 {STORE_NAME} يعمل الآن باللغة العربية والجنيه المصري...")
+    print(f"🚀 {STORE_NAME_AR} Is Live (Dual Language)...")
     app.run_polling()
 
 if __name__ == "__main__":
