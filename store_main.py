@@ -33,14 +33,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-import json
-import os
-import threading
-from flask import Flask
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, CallbackContext
-from datetime import datetime
-
 # --- إعدادات متجر رامي (RAMI STORE) ---
 OWNER_ID = 7020070481
 BOT_TOKEN = "8395659007:AAHaIQBJD_dTd6Np46fNeNS-WHoAbLNK0rk"
@@ -176,4 +168,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
