@@ -1,8 +1,8 @@
 import os
 import threading
 import logging
-import telebot
-from telebot import types
+import Python-telegram-bot
+from Python-telegram-bot import types
 from flask import Flask
 
 # --- 1. إعدادات الربط النهائية (تأكد من التوكن الصحيح) ---
@@ -58,5 +58,6 @@ if __name__ == '__main__':
         
     except Exception as e:
         logger.error(f"❌ Critical error: {e}")
+
 
 
