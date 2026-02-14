@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سوق مصر الإلكتروني | لوحة إدارة المنصة</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+
+<header>
+    <h1>منصة سوق مصر للمستودعات والتجارة</h1>
+    <div id="user-info">مرحباً بك في لوحة التحكم المركزية</div>
+</header>
+
+<div class="ad-space">
+    <div class="ad-banner">إعلان ممول: اشترك في باقة التجار المميزة الآن بخصم 20%!</div>
+</div>
+
+<div class="container">
+    <aside class="sidebar">
+        <h3>القائمة الرئيسية</h3>
+        <ul>
+            <li><button class="nav-btn" id="showVendorReg">تسجيل تاجر جديد</button></li>
+            <li><button class="nav-btn" id="showAddDept">إدارة الأقسام</button></li>
+            <li><button class="nav-btn" id="showAddProduct">إضافة للمستودع</button></li>
+            <li><button class="nav-btn" id="showReports">التقارير والشحن</button></li>
+        </ul>
+    </aside>
+
+    <main class="main-content">
+        <div id="dynamicForm">
+            <h2>لوحة التحكم الشاملة</h2>
+            <p>يرجى اختيار إجراء من القائمة الجانبية لإدارة المتجر والمستودعات.</p>
+        </div>
+
+        <hr>
+        <h3>حالة المستودع والمنتجات الحالية</h3>
+        <div id="productListContainer">
+            <p class="empty-msg">لا توجد منتجات في المستودع حالياً.</p>
+        </div>
+    </main>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
