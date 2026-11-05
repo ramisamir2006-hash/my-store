@@ -1,0 +1,12 @@
+{
+  "name": "karas-abu-seifin-system",
+  "version": "1.0.0",
+  "description": "Karas & Abu Seifin - wholesale/retail system for women's accessories (customer, staff and manager apps)",
+  "main": "server/index.js",
+  "private": true,
+  "engines": { "node": ">=22.5" },
+  "scripts": {
+    "start": "node server/index.js",
+    "test": "node tests/api.test.js"
+  }
+}
